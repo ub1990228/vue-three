@@ -1,0 +1,189 @@
+@import "mixin";
+
+.show{
+	width: 100%;
+	height: 100%;
+	position: relative;
+	background-color: #333;
+	#container{
+		width: 100%;
+		height: 100%;
+	}
+	.panel{
+		position: absolute;
+		left: 5px;
+		top: 5px;
+		z-index: 1;
+		border: 1px solid #000;
+		background: #555;
+		.head{
+			text-align: right;
+			color: #62697C;
+			font-size: 18px;
+			background: #333;
+			padding: 0 5px;
+			i{
+				cursor: pointer;
+				&:hover{
+					color: #fff;
+				}
+			}
+			#maxpanel{
+				display: none;
+			}
+		}
+		.btns{
+			padding: 15px;
+			.funclink{
+				padding: 0 6px;
+				margin-bottom: 3px;
+				a{
+					color: #ccc;
+					font-size: 14px;
+					&:hover{
+						color: $color_main;
+					}
+				}
+			}
+			.line{
+				border-bottom:1px solid #888 ;
+				height: 1px;
+				overflow: hidden;
+				margin: 10px 0;
+			}
+			.colr{
+				width: 180px;
+				margin-bottom: 8px;
+				padding: 0 6px;
+				text-align: right;
+				color: #999;
+				i{
+					float: left;
+					font-style: normal;
+				}
+			}
+			.colt{
+				width: 180px;
+				margin-bottom: 8px;
+				padding: 0 6px;
+				color: #999;
+				.ivu-slider-wrap{
+					margin: 5px 0 16px 0;
+				}
+				i{
+					float: right;
+					font-style: normal;
+					color: #000;
+				}
+			}
+			.abtn{
+				padding: 7px 6px;
+				a{
+					font-size: 13px;
+					display: inline-block;
+					padding: 2px 10px;
+					border-radius: 5px;
+					border: 1px solid #fff;
+					color: #ccc;
+					&:hover{
+						color: $color_main;
+						border: 1px solid $color_main;
+					}
+				}
+			}
+			.tips{
+				color: #999;
+				font-size: 12px;
+				width: 180px;
+				margin-top: 8px;
+			}
+		}
+		&.min{
+			.head{
+				#minpanel{
+					display: none;
+				}
+				#maxpanel{
+					display: inline-block;
+				}
+			}
+			.btns{
+				display: none;
+			}
+		}
+	}
+}
+
+.uploadarea{
+	position: absolute;
+	z-index: 1;
+	top: 40%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: 400px;
+	padding: 50px;
+	border: 1px dashed #666;
+	border-radius: 20px;
+	.intro{
+		width: 210px;
+		margin: 30px auto 0 auto;
+		color: #888;
+	}
+}
+
+.savebox{
+	position: absolute;
+	z-index: 1000;
+	top: 40%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: 500px;
+	padding: 50px 50px 20px 50px;
+	background: #fff;
+	border-radius: 15px;
+	-webkit-box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.2);
+	box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.2);
+	.btnclose{
+		position: absolute;
+		right: 7px;
+		top: 3px;
+		color: #666;
+		font-size: 20px;
+		cursor: pointer;
+		&:hover{
+			color: $color_main;
+		}
+	}
+}
+.cateedit{
+	position: absolute;
+	z-index: 1001;
+	top: 40%;
+	left: 50%;
+	transform: translate(-50%, -40%);
+	width: 510px;
+	min-height: 450px;
+	padding: 50px;
+	background: #fff;
+	border-radius: 15px;
+	-webkit-box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.2);
+	box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.2);
+	.btnclose{
+		position: absolute;
+		right: 8px;
+		top: 3px;
+		color: #666;
+		font-size: 20px;
+		cursor: pointer;
+		&:hover{
+			color: $color_main;
+		}
+	}
+	.addcate{
+		text-align: center;
+		margin-bottom: 20px;
+	}
+	.ivu-table th span{
+		font-weight: bold;
+	}
+}

@@ -1,0 +1,36 @@
+$color_main : #2d8cf0;
+$color_error : #FF6D6D;
+$color_deep : #2866bd;
+
+
+$i-bk : inline-block;
+
+@mixin prop($prop, $val) {
+	-moz-#{$prop}: $val;
+	-webkit-#{$prop}: $val;
+	#{$prop}: $val;
+}
+
+@mixin shadowblock {
+	background: #FFFFFF;
+	box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.15);
+	-moz-box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.15);
+	-webkit-box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.15);
+	border-radius: 3px;
+	-moz-border-radius: 3px;
+	-webkit-border-radius: 3px;
+}
+
+@mixin bg-img($src,$width,$height){
+	display: inline-block;width: $width;height: $height;
+	background-image: url($src);background-repeat: no-repeat;background-size:100% 100%;background-position: center;
+}
+
+@mixin after_clear {
+	&:after{
+		content: "\0020";
+		display: block;
+		height: 0;
+		clear: both;
+	}
+}
