@@ -12,7 +12,11 @@
       <label>颜色:</label>
       <input id="ucolor" type="color" :value="brushColor" @input="onChangeBrushColor"/>
       <label>按住shift或者ctrl进行标注</label>
-      <button @click="sliceShow">模型切片展示</button>
+      <select v-model="select2" @change="seleteVal">
+        <option value="">--请选择--</option>
+        <option v-for="item in optionList" :key="item">{{ item }}</option>
+      </select>
+      <input id="srange" type="range" :value="r_section" :min="sectionSizeMin" :max="sectionSizeMax" :step="sectionSizeStep" @input="onChangeSection">
       <button @click="delMark">删除标注</button>
       <button @click="saveimage">获取快照</button>
       <button @click="exportSTL">保存模型到本地</button>
@@ -28,6 +32,7 @@
   import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
   import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js'
   import { TrackballControls } from '@/assets/js/three_TrackballControlsTH.js'
+  // import { GUI } from "./jsm/libs/dat.gui.module.js"
 
   const OrbitControls = require('three-orbit-controls')(THREE);
 
@@ -59,6 +64,7 @@
   let mouseDown = false
   let mouseRightDown = false
   let font = ''
+  let PlaneArr = []
 
   export default {
     name: "vue-three",
@@ -72,7 +78,13 @@
         brushSizeMax: 200,
         brushSizeStep: 2,
         multiple: 1,
-        snapshot: ''
+        snapshot: '',
+        select2: '',
+        optionList: ['x轴这边', 'x轴那边', 'y轴这边', 'y轴那边', 'z轴这边', 'z轴那边'],
+        r_section: 0,
+        sectionSizeMin: 0,
+        sectionSizeMax: 100,
+        sectionSizeStep: 1
       }
     },
     methods: {
@@ -111,6 +123,8 @@
         renderer = new THREE.WebGLRenderer()
         renderer.setPixelRatio(window.devicePixelRatio)
         renderer.setSize(container.clientWidth, container.clientHeight)
+        // 开启模型对象的局部剪裁平面功能，如果不设置为true，设置剪裁平面的模型不会被剪裁
+        renderer.localClippingEnabled = true
         container.appendChild(renderer.domElement)
         camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 20000)
         mouse = new THREE.Vector2()
@@ -125,6 +139,11 @@
         scene = new THREE.Scene()
         scene.background = new THREE.Color(sceneBgColor)
         scene.add(camera)
+
+        // xyz辅助坐标轴
+        // var axes = new THREE.AxisHelper(50)
+        // scene.add(axes)
+        // xyz辅助坐标轴
 
         scene.add(this.addText('眼球模型demo'))
 
@@ -272,7 +291,7 @@
       },
 
       addText (text) {
-        //先用画布将文字画出
+        // 先用画布将文字画出
         let canvas = document.createElement('canvas')
         let ctx = canvas.getContext('2d')
         ctx.fillStyle = '#ffff00'
@@ -282,7 +301,7 @@
         let texture = new THREE.Texture(canvas)
         texture.needsUpdate = true
 
-        //使用Sprite显示文字
+        // 使用Sprite显示文字
         let material = new THREE.SpriteMaterial({map:texture,useScreenCoordinates: false})
         let textObj = new THREE.Sprite(material)
         textObj.scale.set(0.5*100, 0.25*100, 0.75*100)
@@ -290,7 +309,7 @@
         return textObj
       },
 
-      //窗口监听函数
+      // 窗口监听函数
       onWindowResize() {
         camera.aspect = window.innerWidth / window.innerHeight
         camera.updateProjectionMatrix()
@@ -576,17 +595,17 @@
         this.loadStl('../static/' + fileName.value.split('\\')[fileName.value.split('\\').length-1])
       },
 
-      sliceShow () {
-        // 模型切片展示
+      seleteVal(){
+        // 获取对象盒子模型
         var Box = new THREE.Box3().setFromObject(modelMesh)
-        var point_max = new THREE.Vector3()
-        var point_max_right = new THREE.Vector3()
-        var point_max_behind = new THREE.Vector3()
-        var point_max_under = new THREE.Vector3()
-        var point_min = new THREE.Vector3()
-        var point_min_front = new THREE.Vector3()
-        var point_min_top = new THREE.Vector3()
-        var point_min_left = new THREE.Vector3()
+        var point_max =new THREE.Vector3()
+        var point_max_right =new THREE.Vector3()
+        var point_max_behind =new THREE.Vector3()
+        var point_max_under =new THREE.Vector3()
+        var point_min =new THREE.Vector3()
+        var point_min_front =new THREE.Vector3()
+        var point_min_top =new THREE.Vector3()
+        var point_min_left =new THREE.Vector3()
         point_max.set(Box.max.x,Box.max.y,Box.max.z)
         point_max_right.set(Box.min.x,Box.max.y,Box.max.z)
         point_max_under.set(Box.max.x,Box.max.y,Box.min.z)
@@ -595,9 +614,83 @@
         point_min_front.set(Box.min.x,Box.max.y,Box.min.z)
         point_min_top.set(Box.min.x,Box.min.y,Box.max.z)
         point_min_left.set(Box.max.x,Box.min.y,Box.min.z)
-        
 
-      }
+        // Plane作为元素创建数组，Plane的方向法向量、位置根据需要随意定义
+        if(this.select2 === 'x轴这边'){
+          this.r_section = parseInt(Box.max.x)
+          this.sectionSizeMin = parseInt(Box.min.x)
+          this.sectionSizeMax = parseInt(Box.max.x)
+          PlaneArr = [
+            //创建一个垂直x轴的平面
+            new THREE.Plane(new THREE.Vector3(1,0,0), parseInt(Box.max.x)),
+          ]
+          renderer.clippingPlanes = PlaneArr
+          // 通过PlaneHelper辅助可视化显示剪裁平面Plane
+          // var x = scene.getObjectByName('helper')
+          // if(x !== undefined){
+          //   scene.remove(x)
+          // }
+          // var helper_area = Math.abs(parseInt(Box.max.y)) + Math.abs(parseInt(Box.min.y))
+          // var helper = new THREE.PlaneHelper(PlaneArr[0], helper_area, 0xffff00)
+          // scene.add(helper)
+        }
+        if(this.select2 === 'x轴那边'){
+          this.r_section = parseInt(Box.max.x)
+          this.sectionSizeMin = parseInt(Box.min.x)
+          this.sectionSizeMax = parseInt(Box.max.x)
+          // this.sectionSizeMin = parseInt(Box.min.x)
+          // this.sectionSizeMax = parseInt(Box.max.x)
+          PlaneArr = [
+            //创建一个垂直x轴的平面
+            new THREE.Plane(new THREE.Vector3(-1,0,0),parseInt(Box.max.x)),
+          ]
+          renderer.clippingPlanes = PlaneArr
+        }
+        if(this.select2 === 'y轴这边'){
+          this.r_section = parseInt(Box.max.y)
+          this.sectionSizeMin = parseInt(Box.min.y)
+          this.sectionSizeMax = parseInt(Box.max.y)
+          PlaneArr = [
+            //创建一个垂直y轴的平面
+            new THREE.Plane(new THREE.Vector3(0,1,0), parseInt(Box.max.y)),
+          ]
+          renderer.clippingPlanes = PlaneArr
+        }
+        if(this.select2 === 'y轴那边'){
+          this.r_section = parseInt(Box.max.y)
+          this.sectionSizeMin = parseInt(Box.min.y)
+          this.sectionSizeMax = parseInt(Box.max.y)
+          PlaneArr = [
+            //创建一个垂直y轴的平面
+            new THREE.Plane(new THREE.Vector3(0,-1,0), parseInt(Box.max.y)),
+          ]
+          renderer.clippingPlanes = PlaneArr
+        }
+        if(this.select2 === 'z轴这边'){
+          this.r_section = parseInt(Box.max.z)
+          this.sectionSizeMin = parseInt(Box.min.z)
+          this.sectionSizeMax = parseInt(Box.max.z)
+          PlaneArr = [
+            //创建一个垂直z轴的平面
+            new THREE.Plane(new THREE.Vector3(0,0,1), parseInt(Box.max.z)),
+          ]
+          renderer.clippingPlanes = PlaneArr
+        }
+        if(this.select2 === 'z轴那边'){
+          this.r_section = parseInt(Box.max.z)
+          this.sectionSizeMin = parseInt(Box.min.z)
+          this.sectionSizeMax = parseInt(Box.max.z)
+          PlaneArr = [
+            //创建一个垂直z轴的平面
+            new THREE.Plane(new THREE.Vector3(0,0,-1), parseInt(Box.max.z)),
+          ]
+          renderer.clippingPlanes = PlaneArr
+        }
+      },
+      onChangeSection(){
+        const section = document.getElementById('srange')
+        PlaneArr[0].constant = section.value
+      },
 
     },
     mounted () {
