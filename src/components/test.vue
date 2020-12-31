@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div id="page">
     <div style="position: fixed; left:30px; top:30px;height:240px;width:240px;box-shadow:0px 0px 10px #000;">
       <img :src="snapshot"/>
     </div>
@@ -32,6 +32,7 @@
   import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader'
   import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
   import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js'
+  import { CSS2DObject, CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer'
   import { TrackballControls } from '@/assets/js/three_TrackballControlsTH.js'
   // import { GUI } from "./jsm/libs/dat.gui.module.js"
 
@@ -289,23 +290,87 @@
         return false
       },
 
+      updateScreenPosition (x, y, z) {
+        // 世界坐标转平面坐标
+        var vector = new THREE.Vector3(x, y, z)
+        var canvas1 = renderer.domElement
+        vector.project(camera)
+        vector.x = Math.round((0.5 + vector.x / 2) * window.innerWidth)
+        vector.y = Math.round((0.5 - vector.y / 2) * window.innerHeight)
+        return [vector.x, vector.y]
+      },
       addText (x,y,z,text) {
-        // 先用画布将文字画出
-        let canvas = document.createElement('canvas')
-        let ctx = canvas.getContext('2d')
-        ctx.fillStyle = '#ffffff'
-        ctx.font = 'Bold 28px Arial'
-        ctx.lineWidth = 5
-        ctx.fillText(text,1,100)
-        let texture = new THREE.Texture(canvas)
-        texture.needsUpdate = true
-
-        // 使用Sprite显示文字
-        let material = new THREE.SpriteMaterial({map:texture,useScreenCoordinates: false})
-        let textObj = new THREE.Sprite(material)
-        textObj.scale.set(10, 10, 12)
+        var textObj = this.makeTextSprite(text,{
+          fontsize: 100,
+          borderColor: {r:255, g:0, b:0, a:0.4},/* 边框黑色 */
+          backgroundColor: {r:255, g:255, b:255, a:0.9}/* 背景颜色 */
+        });
+        textObj.center = new THREE.Vector2(0, 0);
         textObj.position.set(x, y, z)
-        return textObj
+
+        scene.add(textObj)
+      },
+      /* 创建字体精灵 */
+      makeTextSprite(message, parameters) {
+        if ( parameters === undefined ) parameters = {};
+        var fontface = parameters.hasOwnProperty("fontface") ?
+            parameters["fontface"] : "Arial";
+        /* 字体大小 */
+        var fontsize = parameters.hasOwnProperty("fontsize") ?
+            parameters["fontsize"] : 18;
+        /* 边框厚度 */
+        var borderThickness = parameters.hasOwnProperty("borderThickness") ?
+            parameters["borderThickness"] : 5;
+        /* 边框颜色 */
+        var borderColor = parameters.hasOwnProperty("borderColor") ?
+            parameters["borderColor"] : { r:0, g:0, b:0, a:1.0 };
+        /* 背景颜色 */
+        var backgroundColor = parameters.hasOwnProperty("backgroundColor") ?
+            parameters["backgroundColor"] : { r:255, g:255, b:255, a:1.0 };
+        /* 创建画布 */
+        var canvas = document.createElement('canvas');
+        var context = canvas.getContext('2d');
+        /* 字体加粗 */
+        context.font = "Bold " + fontsize + "px " + fontface;
+        /* 获取文字的大小数据，高度取决于文字的大小 */
+        var metrics = context.measureText( message );
+        var textWidth = metrics.width;
+        /* 背景颜色 */
+        context.fillStyle = "rgba(" + backgroundColor.r + "," + backgroundColor.g + ","
+            + backgroundColor.b + "," + backgroundColor.a + ")";
+        /* 边框的颜色 */
+        context.strokeStyle = "rgba(" + borderColor.r + "," + borderColor.g + ","
+            + borderColor.b + "," + borderColor.a + ")";
+        context.lineWidth = borderThickness;
+        /* 绘制圆角矩形 */
+        this.roundRect(context, borderThickness/2, borderThickness/2, textWidth + borderThickness, fontsize * 1.4 + borderThickness, 6);
+        /* 字体颜色 */
+        context.fillStyle = "rgba(0, 0, 0, 1.0)";
+        context.fillText( message, borderThickness, fontsize + borderThickness);
+        /* 画布内容用于纹理贴图 */
+        var texture = new THREE.Texture(canvas);
+        texture.needsUpdate = true;
+        var spriteMaterial = new THREE.SpriteMaterial({ map: texture } );
+        var sprite = new THREE.Sprite( spriteMaterial );
+        /* 缩放比例 */
+        sprite.scale.set(10,5,0);
+        return sprite;
+      },
+      /* 绘制圆角矩形 */
+      roundRect(ctx, x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x+r, y);
+        ctx.lineTo(x+w-r, y);
+        ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+        ctx.lineTo(x+w, y+h-r);
+        ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+        ctx.lineTo(x+r, y+h);
+        ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+        ctx.lineTo(x, y+r);
+        ctx.quadraticCurveTo(x, y, x+r, y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
       },
 
       // 窗口监听函数
@@ -718,7 +783,7 @@
         var line = new THREE.Line(geometry, material)
         scene.add(line)
 
-        scene.add(this.addText(-10,0,10,this.toDistance(p1, p2)))
+        this.addText(0,10,10,this.toDistance(p1, p2))
       },
       toDistance(p1,p2) {
         var distance = p1.distanceTo(p2)
@@ -738,5 +803,13 @@
   margin: 0 auto;
   height: 800px;
   overflow: hidden;
+}
+
+.title{
+  position: absolute;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.5);
+  line-height: 1;
+  border-radius: 5px;
 }
 </style>
