@@ -1,16 +1,26 @@
 <template>
   <div id="page">
-    <div style="position: fixed; left:30px; top:30px;height:240px;width:240px;box-shadow:0px 0px 10px #000;">
+    <div style="position: fixed; left:30px; top:100px;height:240px;width:240px;box-shadow:0px 0px 10px #000;">
       <img :src="snapshot"/>
     </div>
     <div style="height:10%;">
       <input id="fileSTL" type="file" name="file" @input="importSTL"/>
       <button @click="autorotate">自动旋转</button>
       <button @click="stopautorotate">停止自动旋转</button>
+      <button @click="lookX1">X+</button>
+      <button @click="lookX2">X-</button>
+      <button @click="lookY1">Y+</button>
+      <button @click="lookY2">Y-</button>
+      <button @click="lookZ1">Z+</button>
+      <button @click="lookZ2">Z-</button>
+      <button @click="locationRes">位置还原</button>
       <label>大小:</label>
       <input id="urange" type="range" :value="r_brushSize" :min="brushSizeMin" :max="brushSizeMax" :step="brushSizeStep" @input="onChangeBrushColor">
-      <label>颜色:</label>
+      <label>标记颜色:</label>
       <input id="ucolor" type="color" :value="brushColor" @input="onChangeBrushColor"/>
+      <label>模型颜色:</label>
+      <input id="mcolor" type="color" :value="MbrushColor" @input="onChangeMBrushColor"/>
+      <button @click="colorRes">颜色还原</button>
       <label style="font-size:8pt;">按住shift或者ctrl进行标注</label>
       <select v-model="select2" @change="seleteVal">
         <option value="">--请选择--</option>
@@ -75,6 +85,7 @@
         enableMark:true,
         autoRotate: true,
         brushColor: '#EA1A1A',
+        MbrushColor: '#EA1A1A',
         r_brushSize: 2,
         brushSizeMin: 2,
         brushSizeMax: 200,
@@ -97,6 +108,16 @@
         this.r_brushSize = num.value
         this.onVueStateChange()
       },
+      onChangeMBrushColor(){
+        const color = document.getElementById('mcolor')
+        this.MbrushColor = color.value
+        defaultMat.color = new THREE.Color(color.value)
+        this.render()
+      },
+      colorRes(){
+        defaultMat.color = new THREE.Color('#CCCCCC')
+        this.render()
+      },
       autorotate () {
         this.autoRotate = true
         controls.autoRotate = this.autoRotate
@@ -110,6 +131,64 @@
       },
       getBrushSize () {
         return this.r_brushSize / this.multiple
+      },
+      lookX1(){
+        // 相机查看x
+        this.autoRotate = false
+        controls.autoRotate = this.autoRotate
+        controls.reset()
+        var Box = new THREE.Box3().setFromObject(modelMesh)
+        camera.position.set(Box.max.x + 100, 0, 0)
+        camera.lookAt(new THREE.Vector3())
+      },
+      lookX2(){
+        // 相机查看x
+        this.autoRotate = false
+        controls.autoRotate = this.autoRotate
+        controls.reset()
+        var Box = new THREE.Box3().setFromObject(modelMesh)
+        camera.position.set(Box.min.x - 100, 0, 0)
+        camera.lookAt(new THREE.Vector3())
+      },
+      lookY1(){
+        // 相机查看y
+        this.autoRotate = false
+        controls.autoRotate = this.autoRotate
+        controls.reset()
+        var Box = new THREE.Box3().setFromObject(modelMesh)
+        camera.position.set(0, Box.max.y + 100, 0)
+        camera.lookAt(new THREE.Vector3())
+      },
+      lookY2(){
+        // 相机查看y
+        this.autoRotate = false
+        controls.autoRotate = this.autoRotate
+        controls.reset()
+        var Box = new THREE.Box3().setFromObject(modelMesh)
+        camera.position.set(0, Box.min.y - 100, 0)
+        camera.lookAt(new THREE.Vector3())
+      },
+      lookZ1(){
+        // 相机查看z
+        this.autoRotate = false
+        controls.autoRotate = this.autoRotate
+        controls.reset()
+        var Box = new THREE.Box3().setFromObject(modelMesh)
+        camera.position.set(0, 0, Box.max.z + 100)
+        camera.lookAt(new THREE.Vector3())
+      },
+      lookZ2(){
+        // 相机查看z
+        this.autoRotate = false
+        controls.autoRotate = this.autoRotate
+        controls.reset()
+        var Box = new THREE.Box3().setFromObject(modelMesh)
+        camera.position.set(0, 0, Box.min.z - 100)
+        camera.lookAt(new THREE.Vector3())
+      },
+      locationRes(){
+        // 位置还原
+        controls.reset()
       },
       //初始化three.js相关内容
       init() {
@@ -783,7 +862,7 @@
         var line = new THREE.Line(geometry, material)
         scene.add(line)
 
-        this.addText(0,10,10,this.toDistance(p1, p2))
+        this.addText(-10,0,10,this.toDistance(p1, p2))
       },
       toDistance(p1,p2) {
         var distance = p1.distanceTo(p2)
