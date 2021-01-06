@@ -28,6 +28,9 @@
       </select>
       <input id="srange" type="range" :value="r_section" :min="sectionSizeMin" :max="sectionSizeMax" :step="sectionSizeStep" @input="onChangeSection">
       <button @click="distance">测量空间距离</button>
+      <button @click="noDistance">停止测量空间距离</button>
+      <button>测量角度</button>
+      <button>停止测量角度</button>
       <button @click="delMark">删除标注</button>
       <button @click="saveimage">获取快照</button>
       <button @click="exportSTL">保存模型到本地</button>
@@ -77,6 +80,9 @@
   let mouseRightDown = false
   let font = ''
   let PlaneArr = []
+  // 计算距离
+  let pointsArray = []
+  let CalDistance = false
 
   export default {
     name: "vue-three",
@@ -284,6 +290,30 @@
         var intersects = raycaster.intersectObjects(sceneObjects)
 
         if (intersects.length > 0) {
+
+          /*计算距离 */
+          if(CalDistance === true){
+            
+            /* 鼠标左键未点击时线段的移动状态 */
+            if (scene.getObjectByName('line_move')) {
+              scene.remove(scene.getObjectByName('line_move'))
+            }
+            /* 创建线段 */
+            var lineGeometry = new THREE.Geometry()
+            var lineMaterial = new THREE.LineBasicMaterial({color: 0xffff00})
+            if (pointsArray.length < 2){
+              lineGeometry.vertices.push(pointsArray[0].geometry.vertices[0])
+              var mouseVector3 = new THREE.Vector3(intersects[0].point.x, intersects[0].point.y, intersects[0].point.z)
+              lineGeometry.vertices.push(mouseVector3)
+              var line = new THREE.Line(lineGeometry, lineMaterial)
+              line.name = 'line_move'
+              scene.add(line)
+            }
+
+            return
+          }
+          /*计算距离 */
+
           var intersect = intersects[0]
           brushMesh.position.copy(intersect.point)
           if(mouseDown && mouseRightDown && intersect.object !== modelMesh
@@ -305,13 +335,51 @@
         if(!isShiftDown || !this.enableMark){
           return
         }
-        mouseDown = true;
+        mouseDown = true
         mouse.x = ((event.clientX-mouseOffset.left) / renderer.domElement.clientWidth) * 2 - 1
         mouse.y = - ((event.clientY-mouseOffset.top) / renderer.domElement.clientHeight) * 2 + 1
         raycaster.setFromCamera(mouse, camera)
         var sceneObjects = markObjects.concat(modelMesh)
         var intersects = raycaster.intersectObjects(sceneObjects)
         if (intersects.length > 0) {
+          
+          /*计算距离 */
+          if(CalDistance === true){
+            if (event.button === 0){
+              /* 若交点此时在模型之内则创建点(Points) */
+              var pointsGeometry = new THREE.Geometry()
+              pointsGeometry.vertices.push(intersects[0].point)
+              var pointsMaterial = new THREE.PointsMaterial({color:0xff0000, size: 1})
+              var points = new THREE.Points(pointsGeometry, pointsMaterial)
+              pointsArray.push(points)
+
+              /* 创建线段 */
+              var lineGeometry = new THREE.Geometry();
+              var lineMaterial = new THREE.LineBasicMaterial({color: 0xffff00})
+              if (pointsArray.length >= 2) {
+                console.log(pointsArray[0].geometry.vertices[0])
+                console.log(pointsArray[1].geometry.vertices[0])
+                lineGeometry.vertices.push(pointsArray[0].geometry.vertices[0], pointsArray[1].geometry.vertices[0])
+                var line = new THREE.Line(lineGeometry, lineMaterial)
+                // 测量距离并显示
+                this.addText(
+                  pointsArray[1].geometry.vertices[0].x,
+                  pointsArray[1].geometry.vertices[0].y,
+                  pointsArray[1].geometry.vertices[0].z, 
+                  this.toDistance(pointsArray[0].geometry.vertices[0],
+                  pointsArray[1].geometry.vertices[0]))
+                // pointsArray.shift()
+                pointsArray.splice(0,pointsArray.length)
+                scene.add(line)
+                CalDistance = false
+              }
+              scene.add(points)
+            }
+
+            return
+          }
+          /*计算距离 */
+
           var intersect = intersects[0]
           if (event.button == 2) { 
             mouseRightDown = true
@@ -391,65 +459,65 @@
       },
       /* 创建字体精灵 */
       makeTextSprite(message, parameters) {
-        if ( parameters === undefined ) parameters = {};
+        if ( parameters === undefined ) parameters = {}
         var fontface = parameters.hasOwnProperty("fontface") ?
-            parameters["fontface"] : "Arial";
+            parameters["fontface"] : "Arial"
         /* 字体大小 */
         var fontsize = parameters.hasOwnProperty("fontsize") ?
-            parameters["fontsize"] : 18;
+            parameters["fontsize"] : 18
         /* 边框厚度 */
         var borderThickness = parameters.hasOwnProperty("borderThickness") ?
-            parameters["borderThickness"] : 5;
+            parameters["borderThickness"] : 5
         /* 边框颜色 */
         var borderColor = parameters.hasOwnProperty("borderColor") ?
-            parameters["borderColor"] : { r:0, g:0, b:0, a:1.0 };
+            parameters["borderColor"] : { r:0, g:0, b:0, a:1.0 }
         /* 背景颜色 */
         var backgroundColor = parameters.hasOwnProperty("backgroundColor") ?
-            parameters["backgroundColor"] : { r:255, g:255, b:255, a:1.0 };
+            parameters["backgroundColor"] : { r:255, g:255, b:255, a:1.0 }
         /* 创建画布 */
-        var canvas = document.createElement('canvas');
-        var context = canvas.getContext('2d');
+        var canvas = document.createElement('canvas')
+        var context = canvas.getContext('2d')
         /* 字体加粗 */
-        context.font = "Bold " + fontsize + "px " + fontface;
+        context.font = "Bold " + fontsize + "px " + fontface
         /* 获取文字的大小数据，高度取决于文字的大小 */
-        var metrics = context.measureText( message );
-        var textWidth = metrics.width;
+        var metrics = context.measureText( message )
+        var textWidth = metrics.width
         /* 背景颜色 */
         context.fillStyle = "rgba(" + backgroundColor.r + "," + backgroundColor.g + ","
-            + backgroundColor.b + "," + backgroundColor.a + ")";
+            + backgroundColor.b + "," + backgroundColor.a + ")"
         /* 边框的颜色 */
         context.strokeStyle = "rgba(" + borderColor.r + "," + borderColor.g + ","
-            + borderColor.b + "," + borderColor.a + ")";
-        context.lineWidth = borderThickness;
+            + borderColor.b + "," + borderColor.a + ")"
+        context.lineWidth = borderThickness
         /* 绘制圆角矩形 */
-        this.roundRect(context, borderThickness/2, borderThickness/2, textWidth + borderThickness, fontsize * 1.4 + borderThickness, 6);
+        this.roundRect(context, borderThickness/2, borderThickness/2, textWidth + borderThickness, fontsize * 1.4 + borderThickness, 6)
         /* 字体颜色 */
-        context.fillStyle = "rgba(0, 0, 0, 1.0)";
-        context.fillText( message, borderThickness, fontsize + borderThickness);
+        context.fillStyle = "rgba(0, 0, 0, 1.0)"
+        context.fillText( message, borderThickness, fontsize + borderThickness)
         /* 画布内容用于纹理贴图 */
-        var texture = new THREE.Texture(canvas);
-        texture.needsUpdate = true;
-        var spriteMaterial = new THREE.SpriteMaterial({ map: texture } );
-        var sprite = new THREE.Sprite( spriteMaterial );
+        var texture = new THREE.Texture(canvas)
+        texture.needsUpdate = true
+        var spriteMaterial = new THREE.SpriteMaterial({ map: texture } )
+        var sprite = new THREE.Sprite( spriteMaterial )
         /* 缩放比例 */
-        sprite.scale.set(10,5,0);
-        return sprite;
+        sprite.scale.set(10,5,0)
+        return sprite
       },
       /* 绘制圆角矩形 */
       roundRect(ctx, x, y, w, h, r) {
-        ctx.beginPath();
-        ctx.moveTo(x+r, y);
-        ctx.lineTo(x+w-r, y);
-        ctx.quadraticCurveTo(x+w, y, x+w, y+r);
-        ctx.lineTo(x+w, y+h-r);
-        ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
-        ctx.lineTo(x+r, y+h);
-        ctx.quadraticCurveTo(x, y+h, x, y+h-r);
-        ctx.lineTo(x, y+r);
-        ctx.quadraticCurveTo(x, y, x+r, y);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
+        ctx.beginPath()
+        ctx.moveTo(x+r, y)
+        ctx.lineTo(x+w-r, y)
+        ctx.quadraticCurveTo(x+w, y, x+w, y+r)
+        ctx.lineTo(x+w, y+h-r)
+        ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h)
+        ctx.lineTo(x+r, y+h)
+        ctx.quadraticCurveTo(x, y+h, x, y+h-r)
+        ctx.lineTo(x, y+r)
+        ctx.quadraticCurveTo(x, y, x+r, y)
+        ctx.closePath()
+        ctx.fill()
+        ctx.stroke()
       },
 
       // 窗口监听函数
@@ -853,16 +921,32 @@
 
       distance(){
         // 模型空间距离测量
-        var material = new THREE.LineBasicMaterial({color: 0xffff00})
-        var geometry = new THREE.Geometry()
-        var p1 = new THREE.Vector3(-10, 0, 10)
-        var p2 = new THREE.Vector3(0, 10, 10)
-        geometry.vertices.push(p1)
-        geometry.vertices.push(p2)
-        var line = new THREE.Line(geometry, material)
-        scene.add(line)
-
-        this.addText(-10,0,10,this.toDistance(p1, p2))
+        // var material = new THREE.LineBasicMaterial({color: 0xffff00})
+        // var geometry = new THREE.Geometry()
+        // var p1 = new THREE.Vector3(-10, 0, 10)
+        // var p2 = new THREE.Vector3(0, 10, 10)
+        // geometry.vertices.push(p1)
+        // geometry.vertices.push(p2)
+        // var line = new THREE.Line(geometry, material)
+        // scene.add(line)
+        // this.addText(-10,0,10,this.toDistance(p1, p2))
+        CalDistance = true
+      },
+      noDistance(){
+        // 删除当前line
+        if (scene.getObjectByName('line_move')) {
+          scene.remove(scene.getObjectByName('line_move'))
+        }
+        pointsArray.splice(0,pointsArray.length)
+        CalDistance = false
+      },
+      getIntersects(event) {
+        mouse.x = ((event.clientX-mouseOffset.left) / renderer.domElement.clientWidth) * 2 - 1
+        mouse.y = -((event.clientY-mouseOffset.top) / renderer.domElement.clientHeight) * 2 + 1
+        raycaster.setFromCamera(mouse, camera)
+        var sceneObjects = markObjects.concat(modelMesh)
+        var intersects = raycaster.intersectObjects(sceneObjects)
+        return intersects
       },
       toDistance(p1,p2) {
         var distance = p1.distanceTo(p2)
