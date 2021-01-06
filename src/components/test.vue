@@ -29,8 +29,8 @@
       <input id="srange" type="range" :value="r_section" :min="sectionSizeMin" :max="sectionSizeMax" :step="sectionSizeStep" @input="onChangeSection">
       <button @click="distance">测量空间距离</button>
       <button @click="noDistance">停止测量空间距离</button>
-      <button>测量角度</button>
-      <button>停止测量角度</button>
+      <button @click="angle">测量角度</button>
+      <button @click="noAngle">停止测量角度</button>
       <button @click="delMark">删除标注</button>
       <button @click="saveimage">获取快照</button>
       <button @click="exportSTL">保存模型到本地</button>
@@ -83,6 +83,8 @@
   // 计算距离
   let pointsArray = []
   let CalDistance = false
+  // 计算角度
+  let CalAngle = false
 
   export default {
     name: "vue-three",
@@ -293,7 +295,6 @@
 
           /*计算距离 */
           if(CalDistance === true){
-            
             /* 鼠标左键未点击时线段的移动状态 */
             if (scene.getObjectByName('line_move')) {
               scene.remove(scene.getObjectByName('line_move'))
@@ -309,7 +310,6 @@
               line.name = 'line_move'
               scene.add(line)
             }
-
             return
           }
           /*计算距离 */
@@ -352,24 +352,24 @@
               var pointsMaterial = new THREE.PointsMaterial({color:0xff0000, size: 1})
               var points = new THREE.Points(pointsGeometry, pointsMaterial)
               pointsArray.push(points)
-
               /* 创建线段 */
               var lineGeometry = new THREE.Geometry();
               var lineMaterial = new THREE.LineBasicMaterial({color: 0xffff00})
               if (pointsArray.length >= 2) {
-                console.log(pointsArray[0].geometry.vertices[0])
-                console.log(pointsArray[1].geometry.vertices[0])
                 lineGeometry.vertices.push(pointsArray[0].geometry.vertices[0], pointsArray[1].geometry.vertices[0])
                 var line = new THREE.Line(lineGeometry, lineMaterial)
                 // 测量距离并显示
-                this.addText(
-                  pointsArray[1].geometry.vertices[0].x,
-                  pointsArray[1].geometry.vertices[0].y,
-                  pointsArray[1].geometry.vertices[0].z, 
+                // 求中点
+                var line3 = new THREE.Line3()
+                line3.start = pointsArray[0].geometry.vertices[0]
+                line3.end = pointsArray[1].geometry.vertices[0]
+                var center = new THREE.Vector3()
+                line3.getCenter(center)
+                this.addText(center.x,center.y,center.z, 
                   this.toDistance(pointsArray[0].geometry.vertices[0],
                   pointsArray[1].geometry.vertices[0]))
                 // pointsArray.shift()
-                pointsArray.splice(0,pointsArray.length)
+                pointsArray.splice(0, pointsArray.length)
                 scene.add(line)
                 CalDistance = false
               }
@@ -951,6 +951,29 @@
       toDistance(p1,p2) {
         var distance = p1.distanceTo(p2)
         return distance.toFixed(2)
+      },
+
+      angle(){
+        // 角度
+        var material = new THREE.LineBasicMaterial({color: 0xffff00})
+        var geometry = new THREE.Geometry()
+        var p1 = new THREE.Vector3(-10, 0, 10)
+        var p2 = new THREE.Vector3(0, 10, 10)
+        var line3 = new THREE.Line3()
+        line3.start = p1
+        line3.end = p2
+        var center = new THREE.Vector3()
+        line3.getCenter(center)
+        geometry.vertices.push(p1)
+        geometry.vertices.push(p2)
+        var line = new THREE.Line(geometry, material)
+        scene.add(line)
+        var c = p1.angleTo(p2)
+        this.addText(center.x,center.y,center.z,THREE.Math.radToDeg(c))
+        CalAngle = true
+      },
+      noAngle(){
+        CalAngle = false
       },
 
     },
