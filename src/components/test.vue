@@ -31,6 +31,8 @@
       <button @click="noDistance">停止测量空间距离</button>
       <button @click="angle">测量角度</button>
       <button @click="noAngle">停止测量角度</button>
+      <button @click="surfaceArea">测量表面积</button>
+      <button @click="noSurfaceArea">停止测量表面积</button>
       <button @click="delMark">删除标注</button>
       <button @click="saveimage">获取快照</button>
       <button @click="exportSTL">保存模型到本地</button>
@@ -314,6 +316,27 @@
           }
           /*计算距离 */
 
+          /*计算角度 */
+          if(CalAngle === true){
+            /* 鼠标左键未点击时线段的移动状态 */
+            if (scene.getObjectByName('line_move')) {
+              scene.remove(scene.getObjectByName('line_move'))
+            }
+            /* 创建线段 */
+            var lineGeometry = new THREE.Geometry()
+            var lineMaterial = new THREE.LineBasicMaterial({color: 0xffff00})
+            if (pointsArray.length < 2){
+              lineGeometry.vertices.push(pointsArray[0].geometry.vertices[0])
+              var mouseVector3 = new THREE.Vector3(intersects[0].point.x, intersects[0].point.y, intersects[0].point.z)
+              lineGeometry.vertices.push(mouseVector3)
+              var line = new THREE.Line(lineGeometry, lineMaterial)
+              line.name = 'line_move'
+              scene.add(line)
+            }
+            return
+          }
+          /*计算角度 */
+
           var intersect = intersects[0]
           brushMesh.position.copy(intersect.point)
           if(mouseDown && mouseRightDown && intersect.object !== modelMesh
@@ -379,6 +402,54 @@
             return
           }
           /*计算距离 */
+
+          /*计算角度 */
+          if(CalAngle === true){
+            if(event.button === 0){
+              /* 若交点此时在模型之内则创建点(Points) */
+              var pointsGeometry = new THREE.Geometry()
+              pointsGeometry.vertices.push(intersects[0].point)
+              var pointsMaterial = new THREE.PointsMaterial({color:0xff0000, size: 1})
+              var points = new THREE.Points(pointsGeometry, pointsMaterial)
+              pointsArray.push(points)
+              /* 创建线段 */
+              var lineGeometry = new THREE.Geometry();
+              var lineMaterial = new THREE.LineBasicMaterial({color: 0xffff00})
+              if (pointsArray.length >= 2) {
+                lineGeometry.vertices.push(pointsArray[0].geometry.vertices[0], pointsArray[1].geometry.vertices[0])
+                var line = new THREE.Line(lineGeometry, lineMaterial)
+                // 测量角度
+                // 求中点
+                var line3 = new THREE.Line3()
+                line3.start = pointsArray[0].geometry.vertices[0]
+                line3.end = pointsArray[1].geometry.vertices[0]
+                var center = new THREE.Vector3()
+                line3.getCenter(center)
+
+                var c = pointsArray[0].geometry.vertices[0].angleTo(pointsArray[1].geometry.vertices[0])
+                var testAngle = String(THREE.Math.radToDeg(c).toFixed(1)) + "°"
+                this.addText(center.x, center.y, center.z, testAngle)
+                
+                var r = pointsArray[0].geometry.vertices[0].distanceTo(new THREE.Vector3(0, 0, 0))
+                var ag_center = center.addScalar(r-(center.distanceTo(new THREE.Vector3(0, 0, 0))))
+                var geometry_a = new THREE.Geometry()
+                var curve = new THREE.QuadraticBezierCurve3(pointsArray[0].geometry.vertices[0], ag_center, pointsArray[1].geometry.vertices[0])
+                var points = curve.getPoints(120)
+                geometry_a.setFromPoints(points)
+                var material_a = new THREE.LineBasicMaterial({color: 0xff0000})
+                var line_a = new THREE.Line(geometry_a, material_a)
+                scene.add(line_a)
+
+                pointsArray.splice(0, pointsArray.length)
+
+                scene.add(line)
+                CalAngle = false
+              }
+              scene.add(points)
+            }
+            return
+          }
+          /*计算角度 */
 
           var intersect = intersects[0]
           if (event.button == 2) { 
@@ -954,26 +1025,57 @@
       },
 
       angle(){
-        // 角度
-        var material = new THREE.LineBasicMaterial({color: 0xffff00})
-        var geometry = new THREE.Geometry()
-        var p1 = new THREE.Vector3(-10, 0, 10)
-        var p2 = new THREE.Vector3(0, 10, 10)
-        var line3 = new THREE.Line3()
-        line3.start = p1
-        line3.end = p2
-        var center = new THREE.Vector3()
-        line3.getCenter(center)
-        geometry.vertices.push(p1)
-        geometry.vertices.push(p2)
-        var line = new THREE.Line(geometry, material)
-        scene.add(line)
-        var c = p1.angleTo(p2)
-        this.addText(center.x,center.y,center.z,THREE.Math.radToDeg(c))
+        // // 角度
+        // var material = new THREE.LineBasicMaterial({color: 0xffff00})
+        // var p1 = new THREE.Vector3(-10, 0, 10)
+        // var p2 = new THREE.Vector3(0, 10, 10)
+
+        // var lineCenter = new THREE.Line3()
+        // lineCenter.start = p1
+        // lineCenter.end = p2
+        // var center = new THREE.Vector3()
+        // lineCenter.getCenter(center)
+
+        // var geometry1 = new THREE.Geometry()
+        // geometry1.vertices.push(new THREE.Vector3(0,0,0))
+        // geometry1.vertices.push(p1)
+        // var line1 = new THREE.Line(geometry1, material)
+        // scene.add(line1)
+
+        // var geometry2 = new THREE.Geometry()
+        // geometry2.vertices.push(new THREE.Vector3(0,0,0))
+        // geometry2.vertices.push(p2)
+        // var line2 = new THREE.Line(geometry2, material)
+        // scene.add(line2)
+
+        // var c = p1.angleTo(p2)
+        // this.addText(center.x,center.y,center.z,THREE.Math.radToDeg(c))
+        
+        // var r = p1.distanceTo(new THREE.Vector3(0, 0, 0))
+        // var ag_center = center.addScalar(r-(center.distanceTo(new THREE.Vector3(0, 0, 0))))
+        // var geometry_a = new THREE.Geometry()
+        // var curve = new THREE.QuadraticBezierCurve3(p1, ag_center, p2)
+        // var points = curve.getPoints(120)
+        // geometry_a.setFromPoints(points)
+        // var material_a = new THREE.LineBasicMaterial({color: 0xff0000})
+        // var line_a = new THREE.Line(geometry_a, material_a)
+        // scene.add(line_a)
+
         CalAngle = true
       },
       noAngle(){
+        if (scene.getObjectByName('line_move')) {
+          scene.remove(scene.getObjectByName('line_move'))
+        }
+        pointsArray.splice(0,pointsArray.length)
         CalAngle = false
+      },
+
+      surfaceArea(){
+
+      },
+      noSurfaceArea(){
+
       },
 
     },
