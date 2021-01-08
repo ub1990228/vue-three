@@ -4,7 +4,7 @@
       <img :src="snapshot"/>
     </div>
     <div style="height:10%;">
-      <input id="fileSTL" type="file" name="file" @input="importSTL"/>
+      <input id="fileSTL" type="file" name="file" @input="importMODEL"/>
       <button @click="autorotate">自动旋转</button>
       <button @click="stopautorotate">停止自动旋转</button>
       <button @click="showPointModel">对象/点模型切换</button>
@@ -869,9 +869,16 @@
         console.error(errObj)
       },
       //外部模型加载函数
-      loadStl(filepath) {
+      loadModel(filepath, type) {
         //包含材质
-        var loader = new STLLoader();
+        var loader = null
+        if(type === 'stl')
+        {
+          loader = new STLLoader()
+        }
+        if(type === 'obj'){
+          loader = new OBJLoader()
+        }
         loader.load(filepath, this.onModelLoaded, this.onLoadModelError)
       },
 
@@ -964,14 +971,14 @@
         this.clearMarks()
       },
 
-      importSTL () {
+      importMODEL () {
         const fileName = document.getElementById('fileSTL')
         const fileType = fileName.value.substr(fileName.value.lastIndexOf('.')+1)
-        if(fileType !== 'stl'){
-          alert('不是STL')
+        if(fileType !== 'stl' && fileType !== 'obj'){
+          alert('不支持此类型')
           return
         }
-        this.loadStl('../static/' + fileName.value.split('\\')[fileName.value.split('\\').length-1])
+        this.loadModel('../static/' + fileName.value.split('\\')[fileName.value.split('\\').length-1], fileType)
       },
 
       seleteVal(){
