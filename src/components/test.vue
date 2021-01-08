@@ -7,6 +7,7 @@
       <input id="fileSTL" type="file" name="file" @input="importSTL"/>
       <button @click="autorotate">自动旋转</button>
       <button @click="stopautorotate">停止自动旋转</button>
+      <button @click="showPointModel">对象/点模型切换</button>
       <button @click="lookX1">X+</button>
       <button @click="lookX2">X-</button>
       <button @click="lookY1">Y+</button>
@@ -21,12 +22,14 @@
       <label>模型颜色:</label>
       <input id="mcolor" type="color" :value="MbrushColor" @input="onChangeMBrushColor"/>
       <button @click="colorRes">颜色还原</button>
-      <label style="font-size:8pt;">按住shift或者ctrl进行标注</label>
+      <label style="font-size:8pt;">按住shift或者ctrl进行测量或标注</label>
       <select v-model="select2" @change="seleteVal">
         <option value="">--请选择--</option>
         <option v-for="item in optionList" :key="item">{{ item }}</option>
       </select>
       <input id="srange" type="range" :value="r_section" :min="sectionSizeMin" :max="sectionSizeMax" :step="sectionSizeStep" @input="onChangeSection">
+      <button @click="addLabel">添加标签</button>
+      <button @click="noAddLabel">停止添加标签</button>
       <button @click="distance">测量空间距离</button>
       <button @click="noDistance">停止测量空间距离</button>
       <button @click="angle">测量角度</button>
@@ -52,7 +55,8 @@
   // import { GUI } from "./jsm/libs/dat.gui.module.js"
 
   const OrbitControls = require('three-orbit-controls')(THREE);
-
+  
+  let ModelType = false
   let scene = ''
   let controls = ''
   let renderer = ''
@@ -87,6 +91,11 @@
   let CalDistance = false
   // 计算角度
   let CalAngle = false
+  // 计算表面积
+  let CalArea = false
+  let areaObjects = []
+  // 添加标签
+  let AddLabel = false
 
   export default {
     name: "vue-three",
@@ -141,6 +150,16 @@
       },
       getBrushSize () {
         return this.r_brushSize / this.multiple
+      },
+      showPointModel(){
+        if(ModelType === false){
+          ModelType = true
+          defaultMat.wireframe = true
+        }
+        else{
+          ModelType = false
+          defaultMat.wireframe = false
+        }
       },
       lookX1(){
         // 相机查看x
@@ -295,6 +314,22 @@
 
         if (intersects.length > 0) {
 
+          /*添加标签 */
+          if(AddLabel === true){
+            var intersect = intersects[0]
+            brushMesh.position.copy(intersect.point)
+            if(mouseDown && mouseRightDown && intersect.object !== modelMesh
+              && markObjects.indexOf(intersect.object)>-1){ 
+              scene.remove(intersect.object)
+              markObjects.splice(markObjects.indexOf(intersect.object), 1)
+            }else if(mouseDown && !mouseRightDown && intersect.object === modelMesh
+              && prePoint !=null
+              && this.pointDistanceThan(prePoint,intersect.point,this.getBrushSize()*0.2)){
+              this.setPaint(intersect)
+            }
+          }
+          /*添加标签 */
+
           /*计算距离 */
           if(CalDistance === true){
             /* 鼠标左键未点击时线段的移动状态 */
@@ -337,6 +372,32 @@
           }
           /*计算角度 */
 
+          /*计算表面积 */
+          if(CalArea === true && mouseDown){
+            var intersect_a = intersects[0]
+            let face = intersect_a.face
+            //显示三角面
+            var triangle_material = new THREE.MeshStandardMaterial({
+                color: 0xffff00,
+                side: THREE.DoubleSide
+            });
+            let faceGeometry = new THREE.Geometry()
+            faceGeometry.vertices.push(modelMesh.geometry.vertices[face.a])
+            faceGeometry.vertices.push(modelMesh.geometry.vertices[face.b])
+            faceGeometry.vertices.push(modelMesh.geometry.vertices[face.c])
+
+            let face3 = new THREE.Face3(0, 1, 2, face.normal, 0x00cc00, 0)
+            faceGeometry.faces.push(face3)
+            faceGeometry.computeFaceNormals()
+            faceGeometry.computeVertexNormals()
+            let faceMesh = new THREE.Mesh(faceGeometry, triangle_material)
+            this.setPaint(faceMesh)
+            scene.add(faceMesh)
+            return
+          }
+          /*计算表面积 */
+
+          /*模型标注 */
           var intersect = intersects[0]
           brushMesh.position.copy(intersect.point)
           if(mouseDown && mouseRightDown && intersect.object !== modelMesh
@@ -348,6 +409,7 @@
             && this.pointDistanceThan(prePoint,intersect.point,this.getBrushSize()*0.2)){
             this.setPaint(intersect)
           }
+          /*模型标注 */
         }
       },
       onDocumentMouseDown (event) {
@@ -451,6 +513,13 @@
           }
           /*计算角度 */
 
+          /*计算表面积 */
+          if(CalArea === true){
+            return
+          }
+          /*计算表面积 */
+
+          /*模型标注 */
           var intersect = intersects[0]
           if (event.button == 2) { 
             mouseRightDown = true
@@ -464,9 +533,31 @@
               this.setPaint(intersect)
             }
           }
+          /*模型标注 */
         }
       },
       onDocumentMouseUp (event) {
+        /*计算表面积 */
+        if(CalArea === true){
+          var area = 0.0
+          var mid = parseInt(areaObjects.length / 2)
+          var midPoint = null
+          // 对于不规则曲面，细分程度越高，面积计算精度越高
+          for(var i = 0; i < areaObjects.length; i++){
+            if(i === mid){
+              midPoint = areaObjects[i].geometry.vertices[1]
+            }
+            var p1 = areaObjects[i].geometry.vertices[0]
+            var p2 = areaObjects[i].geometry.vertices[1]
+            var p3 = areaObjects[i].geometry.vertices[2]
+            area += this.AreaOfTriangle(p1, p2, p3)
+          }
+          this.addText(midPoint.x, midPoint.y, midPoint.z, area.toFixed(2))
+          areaObjects.splice(0,areaObjects.length)
+          CalArea = false
+        }
+        /*计算表面积 */
+
         mouseDown = false
 		    mouseRightDown = false
       },
@@ -487,6 +578,12 @@
         }
       },
       setPaint(intersect) {
+        /*模型表面积计算 */
+        if(CalArea === true){
+          areaObjects.push(intersect)
+          return
+        }
+
         var voxel = new THREE.Mesh(circleGeo, circleMaterial)
         voxel.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), intersect.face.normal)
         prePoint = intersect.point
@@ -1072,10 +1169,44 @@
       },
 
       surfaceArea(){
+        // // 测量表面积
+        // var area = 0.0
+        // // 对于不规则曲面，细分程度越高，面积计算精度越高
+        // for (var i = 0; i < modelMesh.faces.length; i++) {
+        //   var a = modelMesh.faces[i].a
+        //   var b = modelMesh.faces[i].b
+        //   var c = modelMesh.faces[i].c
+        //   var p1 = modelMesh.vertices[a]
+        //   var p2 = modelMesh.vertices[b]
+        //   var p3 = modelMesh.vertices[c]
+        //   area += AreaOfTriangle(p1, p2, p3)
+        // }
+        // this.addText(0, 0, 10, area)
 
+        CalArea = true
       },
       noSurfaceArea(){
+        areaObjects.splice(0,areaObjects.length)
+        CalArea = false
+      },
+      AreaOfTriangle(p1, p2, p3){
+        var v1 = new THREE.Vector3()
+        var v2 = new THREE.Vector3()
+        // 通过两个顶点坐标计算其中两条边构成的向量
+        v1 = p1.clone().sub(p2)
+        v2 = p1.clone().sub(p3)
+        var v3 = new THREE.Vector3()
+        // 三角形面积计算
+        v3.crossVectors(v1,v2)
+        var s = v3.length()/2
+        return s
+      },
 
+      addLabel(){
+        AddLabel = true
+      },
+      noAddLabel(){
+        AddLabel = false
       },
 
     },
