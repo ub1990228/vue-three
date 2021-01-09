@@ -3,6 +3,9 @@
     <div style="position: fixed; left:30px; top:100px;height:240px;width:240px;box-shadow:0px 0px 10px #000;">
       <img :src="snapshot"/>
     </div>
+    <!-- <div class="tag" id="tag">
+      <input id="text_tag" type="text" @keyup.enter="enterUP">
+    </div> -->
     <div style="height:10%;">
       <input id="fileSTL" type="file" name="file" @input="importMODEL"/>
       <button @click="autorotate">自动旋转</button>
@@ -96,6 +99,10 @@
   let areaObjects = []
   // 添加标签
   let AddLabel = false
+  let AddLabelLine = false
+  let labelObjects = []
+  let labelTextBox = []
+  let labelRenderer = ''
 
   export default {
     name: "vue-three",
@@ -235,6 +242,15 @@
         renderer.setSize(container.clientWidth, container.clientHeight)
         // 开启模型对象的局部剪裁平面功能，如果不设置为true，设置剪裁平面的模型不会被剪裁
         renderer.localClippingEnabled = true
+
+        /*添加标签渲染div */
+        // labelRenderer = new CSS2DRenderer()
+        // labelRenderer.setSize(container.clientWidth, container.clientHeight)
+        // labelRenderer.domElement.style.position = 'absolute'
+        // labelRenderer.domElement.style.top = 0
+        // container.appendChild(labelRenderer.domElement)
+        /*添加标签渲染 */
+
         container.appendChild(renderer.domElement)
         camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 20000)
         mouse = new THREE.Vector2()
@@ -312,6 +328,7 @@
         var sceneObjects = markObjects.concat(modelMesh)
         var intersects = raycaster.intersectObjects(sceneObjects)
 
+        // 是否在模型内
         if (intersects.length > 0) {
 
           /*添加标签 */
@@ -319,14 +336,15 @@
             var intersect = intersects[0]
             brushMesh.position.copy(intersect.point)
             if(mouseDown && mouseRightDown && intersect.object !== modelMesh
-              && markObjects.indexOf(intersect.object)>-1){ 
+              && areaObjects.indexOf(intersect.object)>-1){ 
               scene.remove(intersect.object)
-              markObjects.splice(markObjects.indexOf(intersect.object), 1)
+              areaObjects.splice(areaObjects.indexOf(intersect.object), 1)
             }else if(mouseDown && !mouseRightDown && intersect.object === modelMesh
               && prePoint !=null
               && this.pointDistanceThan(prePoint,intersect.point,this.getBrushSize()*0.2)){
               this.setPaint(intersect)
             }
+            return
           }
           /*添加标签 */
 
@@ -426,6 +444,30 @@
         raycaster.setFromCamera(mouse, camera)
         var sceneObjects = markObjects.concat(modelMesh)
         var intersects = raycaster.intersectObjects(sceneObjects)
+
+        /*添加标签 */
+        if(AddLabel === true)
+        {
+          if(intersects.length > 0){
+            var intersect = intersects[0]
+            if (event.button == 2) { 
+              mouseRightDown = true
+              if (intersect.object !== modelMesh && labelObjects.indexOf(intersect.object)>-1) {
+                scene.remove(intersect.object)
+                labelObjects.splice(labelObjects.indexOf(intersect.object), 1)
+              }
+            } else {
+              mouseRightDown = false
+              if(intersect.object === modelMesh){
+                this.setPaint(intersect)
+              }
+            }
+            return
+          }
+        }
+        /*添加标签 */
+
+        // 是否在模型内
         if (intersects.length > 0) {
           
           /*计算距离 */
@@ -558,6 +600,49 @@
         }
         /*计算表面积 */
 
+        /*添加标签 */
+        if(AddLabel === true){
+          // 添加标签-开始画线
+          // AddLabelLine = true
+          var c = parseInt(labelObjects.length / 2)
+          // var p1 = labelObjects[c].position.x
+          // var p2 = labelObjects[c].position.y
+          // var p3 = labelObjects[c].position.z
+          // this.addText(p1, p2, p3, '测试')
+          
+          var windowPosition = this.transPosition(labelObjects[c].position)
+          var left = windowPosition.x
+          var top = windowPosition.y
+          const page1 = document.getElementById('page')
+          var inputElement = document.createElement('input')
+          inputElement.type = 'text'
+          inputElement.id = 'label_' + inputElement.length
+          inputElement.style.position = 'absolute'
+          inputElement.style.left = left + 'px'
+          inputElement.style.top = top + 'px'
+          inputElement.addEventListener('keydown', this.enterUP, false)
+          page1.appendChild(inputElement)
+          // 显示模型标签的div添加，用来坐标更新等
+          var input = {}
+          input.inputElement = inputElement
+          input.position = labelObjects[c].position
+          labelTextBox.push(input)
+
+          // var inputElement = document.createElement('input')
+          // const page1 = document.getElementById('page')
+          // inputElement.type = 'text'
+          // inputElement.name = 'text_test'
+          // page1.appendChild(inputElement)
+          // var modelLabel = new CSS2DObject(inputElement)
+          // modelLabel.position.set(p1, p2, p3)
+          // scene.add(modelLabel)
+          // labelObjects[c].add(modelLabel)
+
+          labelObjects.splice(0,labelObjects.length)
+          AddLabel = false
+        }
+        /*添加标签 */
+
         mouseDown = false
 		    mouseRightDown = false
       },
@@ -583,6 +668,19 @@
           areaObjects.push(intersect)
           return
         }
+        /*模型表面积计算 */
+
+        /*添加标签 */
+        if(AddLabel === true){
+          var voxel_l = new THREE.Mesh(circleGeo, circleMaterial)
+          voxel_l.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), intersect.face.normal)
+          prePoint = intersect.point
+          voxel_l.position.copy(intersect.point)
+          voxel_l.name = 'label_'+labelObjects.length
+          labelObjects.splice(0,labelObjects.length)
+          labelObjects.push(voxel_l)
+        }
+        /*添加标签 */
 
         var voxel = new THREE.Mesh(circleGeo, circleMaterial)
         voxel.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), intersect.face.normal)
@@ -605,14 +703,17 @@
         return false
       },
 
-      updateScreenPosition (x, y, z) {
-        // 世界坐标转平面坐标
-        var vector = new THREE.Vector3(x, y, z)
-        var canvas1 = renderer.domElement
-        vector.project(camera)
-        vector.x = Math.round((0.5 + vector.x / 2) * window.innerWidth)
-        vector.y = Math.round((0.5 - vector.y / 2) * window.innerHeight)
-        return [vector.x, vector.y]
+      transPosition(position){
+        /*三维坐标转屏幕坐标 */
+        let world_vector = new THREE.Vector3(position.x,position.y,position.z)
+        let vector = world_vector.project(camera)
+        const container = document.getElementById('container')
+        let halfWidth = container.clientWidth / 2,
+            halfHeight = container.clientHeight / 2
+        return {
+            x: Math.round(vector.x * halfWidth + halfWidth),
+            y: Math.round(-vector.y * halfHeight + halfHeight)
+        }
       },
       addText (x,y,z,text) {
         var textObj = this.makeTextSprite(text,{
@@ -620,28 +721,22 @@
           borderColor: {r:255, g:0, b:0, a:0.4},/* 边框黑色 */
           backgroundColor: {r:255, g:255, b:255, a:0.9}/* 背景颜色 */
         });
-        textObj.center = new THREE.Vector2(0, 0);
+        textObj.center = new THREE.Vector2(0, 0)
         textObj.position.set(x, y, z)
-
         scene.add(textObj)
       },
       /* 创建字体精灵 */
       makeTextSprite(message, parameters) {
         if ( parameters === undefined ) parameters = {}
-        var fontface = parameters.hasOwnProperty("fontface") ?
-            parameters["fontface"] : "Arial"
+        var fontface = parameters.hasOwnProperty("fontface") ? parameters["fontface"] : "Arial"
         /* 字体大小 */
-        var fontsize = parameters.hasOwnProperty("fontsize") ?
-            parameters["fontsize"] : 18
+        var fontsize = parameters.hasOwnProperty("fontsize") ? parameters["fontsize"] : 18
         /* 边框厚度 */
-        var borderThickness = parameters.hasOwnProperty("borderThickness") ?
-            parameters["borderThickness"] : 5
+        var borderThickness = parameters.hasOwnProperty("borderThickness") ? parameters["borderThickness"] : 5
         /* 边框颜色 */
-        var borderColor = parameters.hasOwnProperty("borderColor") ?
-            parameters["borderColor"] : { r:0, g:0, b:0, a:1.0 }
+        var borderColor = parameters.hasOwnProperty("borderColor") ? parameters["borderColor"] : { r:0, g:0, b:0, a:1.0 }
         /* 背景颜色 */
-        var backgroundColor = parameters.hasOwnProperty("backgroundColor") ?
-            parameters["backgroundColor"] : { r:255, g:255, b:255, a:1.0 }
+        var backgroundColor = parameters.hasOwnProperty("backgroundColor") ? parameters["backgroundColor"] : { r:255, g:255, b:255, a:1.0 }
         /* 创建画布 */
         var canvas = document.createElement('canvas')
         var context = canvas.getContext('2d')
@@ -651,21 +746,19 @@
         var metrics = context.measureText( message )
         var textWidth = metrics.width
         /* 背景颜色 */
-        context.fillStyle = "rgba(" + backgroundColor.r + "," + backgroundColor.g + ","
-            + backgroundColor.b + "," + backgroundColor.a + ")"
+        context.fillStyle = "rgba(" + backgroundColor.r + "," + backgroundColor.g + "," + backgroundColor.b + "," + backgroundColor.a + ")"
         /* 边框的颜色 */
-        context.strokeStyle = "rgba(" + borderColor.r + "," + borderColor.g + ","
-            + borderColor.b + "," + borderColor.a + ")"
+        context.strokeStyle = "rgba(" + borderColor.r + "," + borderColor.g + "," + borderColor.b + "," + borderColor.a + ")"
         context.lineWidth = borderThickness
         /* 绘制圆角矩形 */
         this.roundRect(context, borderThickness/2, borderThickness/2, textWidth + borderThickness, fontsize * 1.4 + borderThickness, 6)
         /* 字体颜色 */
         context.fillStyle = "rgba(0, 0, 0, 1.0)"
-        context.fillText( message, borderThickness, fontsize + borderThickness)
+        context.fillText(message, borderThickness, fontsize + borderThickness)
         /* 画布内容用于纹理贴图 */
         var texture = new THREE.Texture(canvas)
         texture.needsUpdate = true
-        var spriteMaterial = new THREE.SpriteMaterial({ map: texture } )
+        var spriteMaterial = new THREE.SpriteMaterial({ map: texture })
         var sprite = new THREE.Sprite( spriteMaterial )
         /* 缩放比例 */
         sprite.scale.set(10,5,0)
@@ -695,6 +788,7 @@
         renderer.setSize(window.innerWidth, window.innerHeight)
       },
       animate() {
+        /*更新添加的div屏幕坐标 */
         requestAnimationFrame(this.animate)
         this.render()
       },
@@ -704,6 +798,9 @@
         if(brushMesh){
           brushMesh.visible = isShiftDown && this.enableMark
         }
+        // 标签渲染
+        // labelRenderer.render(scene, camera)
+        this.divRender(labelTextBox)
         renderer.render(scene, camera)
       },
       setBrush(_brushSize,_brushColor) {
@@ -1213,7 +1310,32 @@
         AddLabel = true
       },
       noAddLabel(){
+        labelObjects.splice(0,labelObjects.length)
         AddLabel = false
+        AddLabelLine = false
+      },
+      enterUP(event){
+        if(event.keyCode ==13){
+          const text = document.getElementById(event.path[0].id)
+          text.disabled = 'disabled'
+        }
+      },
+      divRender(label) {
+        // 计算三维坐标对应的屏幕坐标
+        if(label.length > 0){
+          for(var i = 0; i < label.length; i++){
+            //计算三维坐标对应的屏幕坐标
+            var windowPosition = this.transPosition(label[i].position)
+            var left = windowPosition.x
+            var top = windowPosition.y
+            // 设置div屏幕位置
+            let div = document.getElementById(label[i].inputElement.id)
+            if(div !== null){
+              div.style.left = left + 'px'
+              div.style.top = top + 'px'
+            }
+          }
+        }
       },
 
     },
@@ -1237,5 +1359,9 @@
   background: rgba(255, 255, 255, 0.5);
   line-height: 1;
   border-radius: 5px;
+}
+
+.tap{
+  position: absolute;
 }
 </style>
