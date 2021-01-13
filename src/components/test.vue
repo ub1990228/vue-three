@@ -1,13 +1,13 @@
 <template>
   <div id="page">
-    <div style="position: fixed; left:30px; top:100px;height:240px;width:240px;box-shadow:0px 0px 10px #000;">
-      <img :src="snapshot"/>
+    <div style="position: fixed; left:200px; top:30px;height:240px;width:240px;box-shadow:0px 0px 10px #000;">
+      <img :src="snapshot" />
     </div>
     <!-- <div class="tag" id="tag">
       <input id="text_tag" type="text" @keyup.enter="enterUP">
     </div> -->
-    <div style="height:10%;">
-      <input id="fileSTL" type="file" name="file" @input="importMODEL"/>
+    <div>
+      <input id="fileSTL" type="file" name="file" @input="importMODEL" />
       <button @click="autorotate">自动旋转</button>
       <button @click="stopautorotate">停止自动旋转</button>
       <button @click="showPointModel">对象/点模型切换</button>
@@ -19,18 +19,20 @@
       <button @click="lookZ2">Z-</button>
       <button @click="locationRes">位置还原</button>
       <label>大小:</label>
-      <input id="urange" type="range" :value="r_brushSize" :min="brushSizeMin" :max="brushSizeMax" :step="brushSizeStep" @input="onChangeBrushColor">
+      <input id="urange" type="range" :value="r_brushSize" :min="brushSizeMin" :max="brushSizeMax" :step="brushSizeStep"
+        @input="onChangeBrushColor">
       <label>标记颜色:</label>
-      <input id="ucolor" type="color" :value="brushColor" @input="onChangeBrushColor"/>
+      <input id="ucolor" type="color" :value="brushColor" @input="onChangeBrushColor" />
       <label>模型颜色:</label>
-      <input id="mcolor" type="color" :value="MbrushColor" @input="onChangeMBrushColor"/>
+      <input id="mcolor" type="color" :value="MbrushColor" @input="onChangeMBrushColor" />
       <button @click="colorRes">颜色还原</button>
       <label style="font-size:8pt;">按住shift或者ctrl进行测量或标注</label>
       <select v-model="select2" @change="seleteVal">
         <option value="">--请选择--</option>
         <option v-for="item in optionList" :key="item">{{ item }}</option>
       </select>
-      <input id="srange" type="range" :value="r_section" :min="sectionSizeMin" :max="sectionSizeMax" :step="sectionSizeStep" @input="onChangeSection">
+      <input id="srange" type="range" :value="r_section" :min="sectionSizeMin" :max="sectionSizeMax"
+        :step="sectionSizeStep" @input="onChangeSection">
       <button @click="addLabel">添加标签</button>
       <button @click="noAddLabel">停止添加标签</button>
       <button @click="distance">测量空间距离</button>
@@ -44,21 +46,54 @@
       <button @click="exportSTL">保存模型到本地</button>
       <a href="" id="downlink" style="display: none;"></a>
     </div>
-    <div id="container"></div>
+    <div id="menu" class="tabs" style="float:left;">
+      <nav>
+        <a href="javascript:;" data-cont="tag" @click="clicktab" class="active">标记</a>
+        <a href="javascript:;" data-cont="label" @click="clicktab">标签</a>
+        <a href="javascript:;" data-cont="distance" @click="clicktab">距离</a>
+        <a href="javascript:;" data-cont="angle" @click="clicktab">角度</a>
+      </nav>
+      <section id="tag">
+        <button>标记</button>
+      </section>
+      <section class="cont" id="label">
+        <button>标签</button>
+      </section>
+      <section class="cont" id="distance">
+        <button>距离</button>
+      </section>
+      <section class="cont" id="angle">
+        <button>角度</button>
+      </section>
+    </div>
+    <div id="container" style="float:right;"></div>
   </div>
 </template>
 <script>
   import * as THREE from 'three'
-  import { STLLoader } from 'three/examples/jsm/loaders/STLLoader'
-  import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader'
-  import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
-  import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js'
-  import { CSS2DObject, CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer'
-  import { TrackballControls } from '@/assets/js/three_TrackballControlsTH.js'
+  import {
+    STLLoader
+  } from 'three/examples/jsm/loaders/STLLoader'
+  import {
+    OBJLoader
+  } from 'three/examples/jsm/loaders/OBJLoader'
+  import {
+    GLTFLoader
+  } from 'three/examples/jsm/loaders/GLTFLoader.js'
+  import {
+    STLExporter
+  } from 'three/examples/jsm/exporters/STLExporter.js'
+  import {
+    CSS2DObject,
+    CSS2DRenderer
+  } from 'three/examples/jsm/renderers/CSS2DRenderer'
+  import {
+    TrackballControls
+  } from '@/assets/js/three_TrackballControlsTH.js'
   // import { GUI } from "./jsm/libs/dat.gui.module.js"
 
   const OrbitControls = require('three-orbit-controls')(THREE);
-  
+
   let ModelType = false
   let scene = ''
   let controls = ''
@@ -103,12 +138,15 @@
   let labelObjects = []
   let labelTextBox = []
   let labelRenderer = ''
+  let labelIDNum = 0
+  // 用来记录所有数据
+  tagRecordModelData = []  // 记录标记数据
 
   export default {
     name: "vue-three",
     data() {
       return {
-        enableMark:true,
+        enableMark: true,
         autoRotate: true,
         brushColor: '#EA1A1A',
         MbrushColor: '#EA1A1A',
@@ -127,48 +165,69 @@
       }
     },
     methods: {
-      onChangeBrushColor(){
+      clicktab() {
+        var navs = document.querySelectorAll('nav a')
+        document.querySelector('section').style.display = 'block'
+        for (var i = 0; i < navs.length; i++) {
+          navs[i].onclick = function () {
+            var beforeNav = document.querySelector('.active')
+            var beforeId = beforeNav.dataset['cont']
+            document.querySelector('#' + beforeId).style.display = 'none'
+            for (var j = 0; j < navs.length; j++) {
+              navs[j].classList.remove('active')
+            }
+            this.classList.add('active')
+            var secId = this.dataset['cont']
+            document.querySelector('#' + secId).style.display = 'block'
+          }
+        }
+      },
+      addSection(type, content){
+        /*相关内容添加进对应的Section */
+
+      },
+
+      onChangeBrushColor() {
         const color = document.getElementById('ucolor')
         this.brushColor = color.value
         const num = document.getElementById('urange')
         this.r_brushSize = num.value
         this.onVueStateChange()
       },
-      onChangeMBrushColor(){
+      onChangeMBrushColor() {
         const color = document.getElementById('mcolor')
         this.MbrushColor = color.value
         defaultMat.color = new THREE.Color(color.value)
         this.render()
       },
-      colorRes(){
+      colorRes() {
         defaultMat.color = new THREE.Color('#CCCCCC')
         this.render()
       },
-      autorotate () {
+      autorotate() {
         this.autoRotate = true
         controls.autoRotate = this.autoRotate
       },
-      stopautorotate () {
+      stopautorotate() {
         this.autoRotate = false
         controls.autoRotate = this.autoRotate
       },
-      getBrushColor () {
+      getBrushColor() {
         return (new THREE.Color(this.brushColor)).getHex()
       },
-      getBrushSize () {
+      getBrushSize() {
         return this.r_brushSize / this.multiple
       },
-      showPointModel(){
-        if(ModelType === false){
+      showPointModel() {
+        if (ModelType === false) {
           ModelType = true
           defaultMat.wireframe = true
-        }
-        else{
+        } else {
           ModelType = false
           defaultMat.wireframe = false
         }
       },
-      lookX1(){
+      lookX1() {
         // 相机查看x
         this.autoRotate = false
         controls.autoRotate = this.autoRotate
@@ -177,7 +236,7 @@
         camera.position.set(Box.max.x + 100, 0, 0)
         camera.lookAt(new THREE.Vector3())
       },
-      lookX2(){
+      lookX2() {
         // 相机查看x
         this.autoRotate = false
         controls.autoRotate = this.autoRotate
@@ -186,7 +245,7 @@
         camera.position.set(Box.min.x - 100, 0, 0)
         camera.lookAt(new THREE.Vector3())
       },
-      lookY1(){
+      lookY1() {
         // 相机查看y
         this.autoRotate = false
         controls.autoRotate = this.autoRotate
@@ -195,7 +254,7 @@
         camera.position.set(0, Box.max.y + 100, 0)
         camera.lookAt(new THREE.Vector3())
       },
-      lookY2(){
+      lookY2() {
         // 相机查看y
         this.autoRotate = false
         controls.autoRotate = this.autoRotate
@@ -204,7 +263,7 @@
         camera.position.set(0, Box.min.y - 100, 0)
         camera.lookAt(new THREE.Vector3())
       },
-      lookZ1(){
+      lookZ1() {
         // 相机查看z
         this.autoRotate = false
         controls.autoRotate = this.autoRotate
@@ -213,7 +272,7 @@
         camera.position.set(0, 0, Box.max.z + 100)
         camera.lookAt(new THREE.Vector3())
       },
-      lookZ2(){
+      lookZ2() {
         // 相机查看z
         this.autoRotate = false
         controls.autoRotate = this.autoRotate
@@ -222,7 +281,7 @@
         camera.position.set(0, 0, Box.min.z - 100)
         camera.lookAt(new THREE.Vector3())
       },
-      locationRes(){
+      locationRes() {
         // 位置还原
         controls.reset()
       },
@@ -232,9 +291,9 @@
         mouseOffset.top = container.getBoundingClientRect().top
         mouseOffset.left = container.getBoundingClientRect().left
         defaultMat = new THREE.MeshLambertMaterial({
-          color:0xCCCCCC,
+          color: 0xCCCCCC,
           wireframe: false,
-          side:THREE.DoubleSide 
+          side: THREE.DoubleSide
         });
 
         renderer = new THREE.WebGLRenderer()
@@ -284,8 +343,8 @@
         this.animate()
       },
 
-      initScene () {
-        camera.position.set(0,0,100)
+      initScene() {
+        camera.position.set(0, 0, 100)
         camera.lookAt(0, 0, 0)
         directionalLight.position.x = 1
         directionalLight.position.y = 1
@@ -294,36 +353,36 @@
         pointLight.position.x = 0
         pointLight.position.y = -25
         pointLight.position.z = 10
-        if(modelMesh){
+        if (modelMesh) {
           scene.remove(modelMesh)
         }
         this.clearMarks()
         controls.reset()
       },
-      clearMarks () {
-        if(markObjects.length>0){
+      clearMarks() {
+        if (markObjects.length > 0) {
           for (var i = 0, l = markObjects.length; i < l; i++) {
             scene.remove(markObjects[i])
           }
           markObjects = []
         }
       },
-      animate () {
+      animate() {
         requestAnimationFrame(this.animate);
         this.render()
       },
-      onVueStateChange () {
+      onVueStateChange() {
         this.setBrush(this.getBrushSize(), this.getBrushColor())
         controls.autoRotate = this.autoRotate
       },
 
-      onDocumentMouseMove (event) {
-        if( !isShiftDown || !this.enableMark ){
-          return 
+      onDocumentMouseMove(event) {
+        if (!isShiftDown || !this.enableMark) {
+          return
         }
         event.preventDefault()
-        mouse.x = ((event.clientX-mouseOffset.left) / renderer.domElement.clientWidth) * 2 - 1
-        mouse.y = -((event.clientY-mouseOffset.top) / renderer.domElement.clientHeight) * 2 + 1
+        mouse.x = ((event.clientX - mouseOffset.left) / renderer.domElement.clientWidth) * 2 - 1
+        mouse.y = -((event.clientY - mouseOffset.top) / renderer.domElement.clientHeight) * 2 + 1
         raycaster.setFromCamera(mouse, camera)
         var sceneObjects = markObjects.concat(modelMesh)
         var intersects = raycaster.intersectObjects(sceneObjects)
@@ -332,16 +391,16 @@
         if (intersects.length > 0) {
 
           /*添加标签 */
-          if(AddLabel === true){
+          if (AddLabel === true) {
             var intersect = intersects[0]
             brushMesh.position.copy(intersect.point)
-            if(mouseDown && mouseRightDown && intersect.object !== modelMesh
-              && areaObjects.indexOf(intersect.object)>-1){ 
+            if (mouseDown && mouseRightDown && intersect.object !== modelMesh &&
+              areaObjects.indexOf(intersect.object) > -1) {
               scene.remove(intersect.object)
               areaObjects.splice(areaObjects.indexOf(intersect.object), 1)
-            }else if(mouseDown && !mouseRightDown && intersect.object === modelMesh
-              && prePoint !=null
-              && this.pointDistanceThan(prePoint,intersect.point,this.getBrushSize()*0.2)){
+            } else if (mouseDown && !mouseRightDown && intersect.object === modelMesh &&
+              prePoint != null &&
+              this.pointDistanceThan(prePoint, intersect.point, this.getBrushSize() * 0.2)) {
               this.setPaint(intersect)
             }
             return
@@ -349,15 +408,17 @@
           /*添加标签 */
 
           /*计算距离 */
-          if(CalDistance === true){
+          if (CalDistance === true) {
             /* 鼠标左键未点击时线段的移动状态 */
             if (scene.getObjectByName('line_move')) {
               scene.remove(scene.getObjectByName('line_move'))
             }
             /* 创建线段 */
             var lineGeometry = new THREE.Geometry()
-            var lineMaterial = new THREE.LineBasicMaterial({color: 0xffff00})
-            if (pointsArray.length < 2){
+            var lineMaterial = new THREE.LineBasicMaterial({
+              color: 0xffff00
+            })
+            if (pointsArray.length < 2) {
               lineGeometry.vertices.push(pointsArray[0].geometry.vertices[0])
               var mouseVector3 = new THREE.Vector3(intersects[0].point.x, intersects[0].point.y, intersects[0].point.z)
               lineGeometry.vertices.push(mouseVector3)
@@ -370,15 +431,17 @@
           /*计算距离 */
 
           /*计算角度 */
-          if(CalAngle === true){
+          if (CalAngle === true) {
             /* 鼠标左键未点击时线段的移动状态 */
             if (scene.getObjectByName('line_move')) {
               scene.remove(scene.getObjectByName('line_move'))
             }
             /* 创建线段 */
             var lineGeometry = new THREE.Geometry()
-            var lineMaterial = new THREE.LineBasicMaterial({color: 0xffff00})
-            if (pointsArray.length < 2){
+            var lineMaterial = new THREE.LineBasicMaterial({
+              color: 0xffff00
+            })
+            if (pointsArray.length < 2) {
               lineGeometry.vertices.push(pointsArray[0].geometry.vertices[0])
               var mouseVector3 = new THREE.Vector3(intersects[0].point.x, intersects[0].point.y, intersects[0].point.z)
               lineGeometry.vertices.push(mouseVector3)
@@ -391,13 +454,13 @@
           /*计算角度 */
 
           /*计算表面积 */
-          if(CalArea === true && mouseDown){
+          if (CalArea === true && mouseDown) {
             var intersect_a = intersects[0]
             let face = intersect_a.face
             //显示三角面
             var triangle_material = new THREE.MeshStandardMaterial({
-                color: 0xffff00,
-                side: THREE.DoubleSide
+              color: 0xffff00,
+              side: THREE.DoubleSide
             });
             let faceGeometry = new THREE.Geometry()
             faceGeometry.vertices.push(modelMesh.geometry.vertices[face.a])
@@ -418,47 +481,46 @@
           /*模型标注 */
           var intersect = intersects[0]
           brushMesh.position.copy(intersect.point)
-          if(mouseDown && mouseRightDown && intersect.object !== modelMesh
-            && markObjects.indexOf(intersect.object)>-1){ 
+          if (mouseDown && mouseRightDown && intersect.object !== modelMesh &&
+            markObjects.indexOf(intersect.object) > -1) {
             scene.remove(intersect.object)
             markObjects.splice(markObjects.indexOf(intersect.object), 1)
-          }else if(mouseDown && !mouseRightDown && intersect.object === modelMesh
-            && prePoint !=null
-            && this.pointDistanceThan(prePoint,intersect.point,this.getBrushSize()*0.2)){
+          } else if (mouseDown && !mouseRightDown && intersect.object === modelMesh &&
+            prePoint != null &&
+            this.pointDistanceThan(prePoint, intersect.point, this.getBrushSize() * 0.2)) {
             this.setPaint(intersect)
           }
           /*模型标注 */
         }
       },
-      onDocumentMouseDown (event) {
-        if(event.target.nodeName.toLowerCase()=='canvas' && controls.autoRotate){
+      onDocumentMouseDown(event) {
+        if (event.target.nodeName.toLowerCase() == 'canvas' && controls.autoRotate) {
           controls.autoRotate = false
           this.autoRotate = false
         }
-        if(!isShiftDown || !this.enableMark){
+        if (!isShiftDown || !this.enableMark) {
           return
         }
         mouseDown = true
-        mouse.x = ((event.clientX-mouseOffset.left) / renderer.domElement.clientWidth) * 2 - 1
-        mouse.y = - ((event.clientY-mouseOffset.top) / renderer.domElement.clientHeight) * 2 + 1
+        mouse.x = ((event.clientX - mouseOffset.left) / renderer.domElement.clientWidth) * 2 - 1
+        mouse.y = -((event.clientY - mouseOffset.top) / renderer.domElement.clientHeight) * 2 + 1
         raycaster.setFromCamera(mouse, camera)
         var sceneObjects = markObjects.concat(modelMesh)
         var intersects = raycaster.intersectObjects(sceneObjects)
 
         /*添加标签 */
-        if(AddLabel === true)
-        {
-          if(intersects.length > 0){
+        if (AddLabel === true) {
+          if (intersects.length > 0) {
             var intersect = intersects[0]
-            if (event.button == 2) { 
+            if (event.button == 2) {
               mouseRightDown = true
-              if (intersect.object !== modelMesh && labelObjects.indexOf(intersect.object)>-1) {
+              if (intersect.object !== modelMesh && labelObjects.indexOf(intersect.object) > -1) {
                 scene.remove(intersect.object)
                 labelObjects.splice(labelObjects.indexOf(intersect.object), 1)
               }
             } else {
               mouseRightDown = false
-              if(intersect.object === modelMesh){
+              if (intersect.object === modelMesh) {
                 this.setPaint(intersect)
               }
             }
@@ -469,19 +531,24 @@
 
         // 是否在模型内
         if (intersects.length > 0) {
-          
+
           /*计算距离 */
-          if(CalDistance === true){
-            if (event.button === 0){
+          if (CalDistance === true) {
+            if (event.button === 0) {
               /* 若交点此时在模型之内则创建点(Points) */
               var pointsGeometry = new THREE.Geometry()
               pointsGeometry.vertices.push(intersects[0].point)
-              var pointsMaterial = new THREE.PointsMaterial({color:0xff0000, size: 1})
+              var pointsMaterial = new THREE.PointsMaterial({
+                color: 0xff0000,
+                size: 1
+              })
               var points = new THREE.Points(pointsGeometry, pointsMaterial)
               pointsArray.push(points)
               /* 创建线段 */
               var lineGeometry = new THREE.Geometry();
-              var lineMaterial = new THREE.LineBasicMaterial({color: 0xffff00})
+              var lineMaterial = new THREE.LineBasicMaterial({
+                color: 0xffff00
+              })
               if (pointsArray.length >= 2) {
                 lineGeometry.vertices.push(pointsArray[0].geometry.vertices[0], pointsArray[1].geometry.vertices[0])
                 var line = new THREE.Line(lineGeometry, lineMaterial)
@@ -492,9 +559,9 @@
                 line3.end = pointsArray[1].geometry.vertices[0]
                 var center = new THREE.Vector3()
                 line3.getCenter(center)
-                this.addText(center.x,center.y,center.z, 
+                this.addText(center.x, center.y, center.z,
                   this.toDistance(pointsArray[0].geometry.vertices[0],
-                  pointsArray[1].geometry.vertices[0]))
+                    pointsArray[1].geometry.vertices[0]))
                 // pointsArray.shift()
                 pointsArray.splice(0, pointsArray.length)
                 scene.add(line)
@@ -508,17 +575,22 @@
           /*计算距离 */
 
           /*计算角度 */
-          if(CalAngle === true){
-            if(event.button === 0){
+          if (CalAngle === true) {
+            if (event.button === 0) {
               /* 若交点此时在模型之内则创建点(Points) */
               var pointsGeometry = new THREE.Geometry()
               pointsGeometry.vertices.push(intersects[0].point)
-              var pointsMaterial = new THREE.PointsMaterial({color:0xff0000, size: 1})
+              var pointsMaterial = new THREE.PointsMaterial({
+                color: 0xff0000,
+                size: 1
+              })
               var points = new THREE.Points(pointsGeometry, pointsMaterial)
               pointsArray.push(points)
               /* 创建线段 */
               var lineGeometry = new THREE.Geometry();
-              var lineMaterial = new THREE.LineBasicMaterial({color: 0xffff00})
+              var lineMaterial = new THREE.LineBasicMaterial({
+                color: 0xffff00
+              })
               if (pointsArray.length >= 2) {
                 lineGeometry.vertices.push(pointsArray[0].geometry.vertices[0], pointsArray[1].geometry.vertices[0])
                 var line = new THREE.Line(lineGeometry, lineMaterial)
@@ -533,14 +605,17 @@
                 var c = pointsArray[0].geometry.vertices[0].angleTo(pointsArray[1].geometry.vertices[0])
                 var testAngle = String(THREE.Math.radToDeg(c).toFixed(1)) + "°"
                 this.addText(center.x, center.y, center.z, testAngle)
-                
+
                 var r = pointsArray[0].geometry.vertices[0].distanceTo(new THREE.Vector3(0, 0, 0))
-                var ag_center = center.addScalar(r-(center.distanceTo(new THREE.Vector3(0, 0, 0))))
+                var ag_center = center.addScalar(r - (center.distanceTo(new THREE.Vector3(0, 0, 0))))
                 var geometry_a = new THREE.Geometry()
-                var curve = new THREE.QuadraticBezierCurve3(pointsArray[0].geometry.vertices[0], ag_center, pointsArray[1].geometry.vertices[0])
+                var curve = new THREE.QuadraticBezierCurve3(pointsArray[0].geometry.vertices[0], ag_center, pointsArray[
+                  1].geometry.vertices[0])
                 var points = curve.getPoints(120)
                 geometry_a.setFromPoints(points)
-                var material_a = new THREE.LineBasicMaterial({color: 0xff0000})
+                var material_a = new THREE.LineBasicMaterial({
+                  color: 0xff0000
+                })
                 var line_a = new THREE.Line(geometry_a, material_a)
                 scene.add(line_a)
 
@@ -556,37 +631,37 @@
           /*计算角度 */
 
           /*计算表面积 */
-          if(CalArea === true){
+          if (CalArea === true) {
             return
           }
           /*计算表面积 */
 
           /*模型标注 */
           var intersect = intersects[0]
-          if (event.button == 2) { 
+          if (event.button == 2) {
             mouseRightDown = true
-            if (intersect.object !== modelMesh && markObjects.indexOf(intersect.object)>-1) {
+            if (intersect.object !== modelMesh && markObjects.indexOf(intersect.object) > -1) {
               scene.remove(intersect.object)
               markObjects.splice(markObjects.indexOf(intersect.object), 1)
             }
           } else {
             mouseRightDown = false
-            if(intersect.object === modelMesh){
+            if (intersect.object === modelMesh) {
               this.setPaint(intersect)
             }
           }
           /*模型标注 */
         }
       },
-      onDocumentMouseUp (event) {
+      onDocumentMouseUp(event) {
         /*计算表面积 */
-        if(CalArea === true){
+        if (CalArea === true) {
           var area = 0.0
           var mid = parseInt(areaObjects.length / 2)
           var midPoint = null
           // 对于不规则曲面，细分程度越高，面积计算精度越高
-          for(var i = 0; i < areaObjects.length; i++){
-            if(i === mid){
+          for (var i = 0; i < areaObjects.length; i++) {
+            if (i === mid) {
               midPoint = areaObjects[i].geometry.vertices[1]
             }
             var p1 = areaObjects[i].geometry.vertices[0]
@@ -595,13 +670,14 @@
             area += this.AreaOfTriangle(p1, p2, p3)
           }
           this.addText(midPoint.x, midPoint.y, midPoint.z, area.toFixed(2))
-          areaObjects.splice(0,areaObjects.length)
+          areaObjects.splice(0, areaObjects.length)
           CalArea = false
         }
         /*计算表面积 */
 
         /*添加标签 */
-        if(AddLabel === true){
+        if (AddLabel === true) {
+          labelIDNum++
           // 添加标签-开始画线
           // AddLabelLine = true
           var c = parseInt(labelObjects.length / 2)
@@ -609,14 +685,14 @@
           // var p2 = labelObjects[c].position.y
           // var p3 = labelObjects[c].position.z
           // this.addText(p1, p2, p3, '测试')
-          
+
           var windowPosition = this.transPosition(labelObjects[c].position)
           var left = windowPosition.x
           var top = windowPosition.y
           const page1 = document.getElementById('page')
           var inputElement = document.createElement('input')
           inputElement.type = 'text'
-          inputElement.id = 'label_' + inputElement.length
+          inputElement.id = 'label_' + labelIDNum.toString()
           inputElement.style.position = 'absolute'
           inputElement.style.left = left + 'px'
           inputElement.style.top = top + 'px'
@@ -638,15 +714,15 @@
           // scene.add(modelLabel)
           // labelObjects[c].add(modelLabel)
 
-          labelObjects.splice(0,labelObjects.length)
+          labelObjects.splice(0, labelObjects.length)
           AddLabel = false
         }
         /*添加标签 */
 
         mouseDown = false
-		    mouseRightDown = false
+        mouseRightDown = false
       },
-      onDocumentKeyDown (event) {
+      onDocumentKeyDown(event) {
         switch (event.keyCode) {
           case 16: // shift
           case 17: // ctrl
@@ -654,7 +730,7 @@
             break
         }
       },
-      onDocumentKeyUp (event) {
+      onDocumentKeyUp(event) {
         switch (event.keyCode) {
           case 16: // shift
           case 17: // ctrl
@@ -664,20 +740,20 @@
       },
       setPaint(intersect) {
         /*模型表面积计算 */
-        if(CalArea === true){
+        if (CalArea === true) {
           areaObjects.push(intersect)
           return
         }
         /*模型表面积计算 */
 
         /*添加标签 */
-        if(AddLabel === true){
+        if (AddLabel === true) {
           var voxel_l = new THREE.Mesh(circleGeo, circleMaterial)
           voxel_l.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), intersect.face.normal)
           prePoint = intersect.point
           voxel_l.position.copy(intersect.point)
-          voxel_l.name = 'label_'+labelObjects.length
-          labelObjects.splice(0,labelObjects.length)
+          voxel_l.name = 'label_' + labelObjects.length
+          // labelObjects.splice(0,labelObjects.length)
           labelObjects.push(voxel_l)
         }
         /*添加标签 */
@@ -686,40 +762,51 @@
         voxel.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), intersect.face.normal)
         prePoint = intersect.point
         voxel.position.copy(intersect.point)
-        voxel.name = 'mark_'+markObjects.length
+        voxel.name = 'mark_' + markObjects.length
         scene.add(voxel)
         markObjects.push(voxel)
       },
-      pointDistanceThan(point1,point2,distance) {
-        if(Math.abs(point1.x-point2.x) >= distance){
+      pointDistanceThan(point1, point2, distance) {
+        if (Math.abs(point1.x - point2.x) >= distance) {
           return true
         }
-        if(Math.abs(point1.y-point2.y) >= distance){
+        if (Math.abs(point1.y - point2.y) >= distance) {
           return true
         }
-        if(Math.abs(point1.z-point2.z) >= distance){
+        if (Math.abs(point1.z - point2.z) >= distance) {
           return true
         }
         return false
       },
 
-      transPosition(position){
+      transPosition(position) {
         /*三维坐标转屏幕坐标 */
-        let world_vector = new THREE.Vector3(position.x,position.y,position.z)
+        let world_vector = new THREE.Vector3(position.x, position.y, position.z)
         let vector = world_vector.project(camera)
         const container = document.getElementById('container')
         let halfWidth = container.clientWidth / 2,
-            halfHeight = container.clientHeight / 2
+          halfHeight = container.clientHeight / 2
         return {
-            x: Math.round(vector.x * halfWidth + halfWidth),
-            y: Math.round(-vector.y * halfHeight + halfHeight)
+          x: Math.round(vector.x * halfWidth + halfWidth),
+          y: Math.round(-vector.y * halfHeight + halfHeight)
         }
       },
-      addText (x,y,z,text) {
-        var textObj = this.makeTextSprite(text,{
+      addText(x, y, z, text) {
+        var textObj = this.makeTextSprite(text, {
           fontsize: 100,
-          borderColor: {r:255, g:0, b:0, a:0.4},/* 边框黑色 */
-          backgroundColor: {r:255, g:255, b:255, a:0.9}/* 背景颜色 */
+          borderColor: {
+            r: 255,
+            g: 0,
+            b: 0,
+            a: 0.4
+          },
+          /* 边框黑色 */
+          backgroundColor: {
+            r: 255,
+            g: 255,
+            b: 255,
+            a: 0.9
+          } /* 背景颜色 */
         });
         textObj.center = new THREE.Vector2(0, 0)
         textObj.position.set(x, y, z)
@@ -727,55 +814,70 @@
       },
       /* 创建字体精灵 */
       makeTextSprite(message, parameters) {
-        if ( parameters === undefined ) parameters = {}
+        if (parameters === undefined) parameters = {}
         var fontface = parameters.hasOwnProperty("fontface") ? parameters["fontface"] : "Arial"
         /* 字体大小 */
         var fontsize = parameters.hasOwnProperty("fontsize") ? parameters["fontsize"] : 18
         /* 边框厚度 */
         var borderThickness = parameters.hasOwnProperty("borderThickness") ? parameters["borderThickness"] : 5
         /* 边框颜色 */
-        var borderColor = parameters.hasOwnProperty("borderColor") ? parameters["borderColor"] : { r:0, g:0, b:0, a:1.0 }
+        var borderColor = parameters.hasOwnProperty("borderColor") ? parameters["borderColor"] : {
+          r: 0,
+          g: 0,
+          b: 0,
+          a: 1.0
+        }
         /* 背景颜色 */
-        var backgroundColor = parameters.hasOwnProperty("backgroundColor") ? parameters["backgroundColor"] : { r:255, g:255, b:255, a:1.0 }
+        var backgroundColor = parameters.hasOwnProperty("backgroundColor") ? parameters["backgroundColor"] : {
+          r: 255,
+          g: 255,
+          b: 255,
+          a: 1.0
+        }
         /* 创建画布 */
         var canvas = document.createElement('canvas')
         var context = canvas.getContext('2d')
         /* 字体加粗 */
         context.font = "Bold " + fontsize + "px " + fontface
         /* 获取文字的大小数据，高度取决于文字的大小 */
-        var metrics = context.measureText( message )
+        var metrics = context.measureText(message)
         var textWidth = metrics.width
         /* 背景颜色 */
-        context.fillStyle = "rgba(" + backgroundColor.r + "," + backgroundColor.g + "," + backgroundColor.b + "," + backgroundColor.a + ")"
+        context.fillStyle = "rgba(" + backgroundColor.r + "," + backgroundColor.g + "," + backgroundColor.b + "," +
+          backgroundColor.a + ")"
         /* 边框的颜色 */
-        context.strokeStyle = "rgba(" + borderColor.r + "," + borderColor.g + "," + borderColor.b + "," + borderColor.a + ")"
+        context.strokeStyle = "rgba(" + borderColor.r + "," + borderColor.g + "," + borderColor.b + "," + borderColor
+          .a + ")"
         context.lineWidth = borderThickness
         /* 绘制圆角矩形 */
-        this.roundRect(context, borderThickness/2, borderThickness/2, textWidth + borderThickness, fontsize * 1.4 + borderThickness, 6)
+        this.roundRect(context, borderThickness / 2, borderThickness / 2, textWidth + borderThickness, fontsize * 1.4 +
+          borderThickness, 6)
         /* 字体颜色 */
         context.fillStyle = "rgba(0, 0, 0, 1.0)"
         context.fillText(message, borderThickness, fontsize + borderThickness)
         /* 画布内容用于纹理贴图 */
         var texture = new THREE.Texture(canvas)
         texture.needsUpdate = true
-        var spriteMaterial = new THREE.SpriteMaterial({ map: texture })
-        var sprite = new THREE.Sprite( spriteMaterial )
+        var spriteMaterial = new THREE.SpriteMaterial({
+          map: texture
+        })
+        var sprite = new THREE.Sprite(spriteMaterial)
         /* 缩放比例 */
-        sprite.scale.set(10,5,0)
+        sprite.scale.set(10, 5, 0)
         return sprite
       },
       /* 绘制圆角矩形 */
       roundRect(ctx, x, y, w, h, r) {
         ctx.beginPath()
-        ctx.moveTo(x+r, y)
-        ctx.lineTo(x+w-r, y)
-        ctx.quadraticCurveTo(x+w, y, x+w, y+r)
-        ctx.lineTo(x+w, y+h-r)
-        ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h)
-        ctx.lineTo(x+r, y+h)
-        ctx.quadraticCurveTo(x, y+h, x, y+h-r)
-        ctx.lineTo(x, y+r)
-        ctx.quadraticCurveTo(x, y, x+r, y)
+        ctx.moveTo(x + r, y)
+        ctx.lineTo(x + w - r, y)
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r)
+        ctx.lineTo(x + w, y + h - r)
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
+        ctx.lineTo(x + r, y + h)
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r)
+        ctx.lineTo(x, y + r)
+        ctx.quadraticCurveTo(x, y, x + r, y)
         ctx.closePath()
         ctx.fill()
         ctx.stroke()
@@ -795,7 +897,7 @@
       render() {
         controls.enabled = !isShiftDown
         controls.update()
-        if(brushMesh){
+        if (brushMesh) {
           brushMesh.visible = isShiftDown && this.enableMark
         }
         // 标签渲染
@@ -803,20 +905,27 @@
         this.divRender(labelTextBox)
         renderer.render(scene, camera)
       },
-      setBrush(_brushSize,_brushColor) {
-        circleGeo = new THREE.CylinderBufferGeometry(_brushSize,_brushSize,_brushSize/5,16)
-        circleMaterial = new THREE.MeshBasicMaterial({color: _brushColor})
-        var brushMaterial = new THREE.MeshBasicMaterial({color: _brushColor, opacity: 0.5, transparent: true,wireframe:true})
+      setBrush(_brushSize, _brushColor) {
+        circleGeo = new THREE.CylinderBufferGeometry(_brushSize, _brushSize, _brushSize / 5, 16)
+        circleMaterial = new THREE.MeshBasicMaterial({
+          color: _brushColor
+        })
+        var brushMaterial = new THREE.MeshBasicMaterial({
+          color: _brushColor,
+          opacity: 0.5,
+          transparent: true,
+          wireframe: true
+        })
         this.sceneRemoveByName('brushMesh')
         var brushMeshGeo = new THREE.SphereBufferGeometry(_brushSize, 16, 16)
         brushMesh = new THREE.Mesh(brushMeshGeo, brushMaterial)
         brushMesh.name = 'brushMesh'
         scene.add(brushMesh)
       },
-      sceneRemoveByName (name) {
-        if(scene.children){
-          for (var i = 0, l = scene.children.length; i < l; i ++) {
-            var child = scene.children[ i ]
+      sceneRemoveByName(name) {
+        if (scene.children) {
+          for (var i = 0, l = scene.children.length; i < l; i++) {
+            var child = scene.children[i]
             if (child.name === name) {
               scene.remove(child)
               return
@@ -824,18 +933,18 @@
           }
         }
       },
-      setBrushSize(size){
+      setBrushSize(size) {
         this.r_brushSize = size
         this.brushSizeMin = 2
         this.brushSizeMax = this.r_brushSize * 6
         this.brushSizeStep = 2
       },
-      initGui () {
+      initGui() {
         this.multiple = 1
         this.autoRotate = true
         var tmp = this.r_brushSize
-        while (tmp<100){
-          this.multiple = this.multiple *10
+        while (tmp < 100) {
+          this.multiple = this.multiple * 10
           tmp = brushSize * this.multiple
         }
 
@@ -843,54 +952,62 @@
         controls.autoRotate = this.autoRotate
       },
       getMergedGeometry(result) {
-        if(result.isGeometry){
+        if (result.isGeometry) {
           return result
-        } else if( result.isBufferGeometry ){
+        } else if (result.isBufferGeometry) {
           return (new THREE.Geometry().fromBufferGeometry(result))
-        } else if(result.geometry && result.geometry.isGeometry){
+        } else if (result.geometry && result.geometry.isGeometry) {
           return result.geometry
-        } else if(result.geometry && result.geometry.isBufferGeometry){
+        } else if (result.geometry && result.geometry.isBufferGeometry) {
           return (new THREE.Geometry().fromBufferGeometry(result))
-        } else if((result.isObject3D || result.isGroup || result.isScene) && result.children){
-          if( result.children.length ==1 && result.children[0] instanceof THREE.Mesh ){
-            result.children[0].geometry.faceVertexUvs = [[]]
+        } else if ((result.isObject3D || result.isGroup || result.isScene) && result.children) {
+          if (result.children.length == 1 && result.children[0] instanceof THREE.Mesh) {
+            result.children[0].geometry.faceVertexUvs = [
+              []
+            ]
             return (new THREE.Geometry().fromBufferGeometry(result.children[0].geometry))
-          }else if(result.children.length >1){
+          } else if (result.children.length > 1) {
             var geometry = new THREE.Geometry()
             result.children.forEach(function (child) {
-              if(child instanceof THREE.Mesh){
+              if (child instanceof THREE.Mesh) {
                 var mesh = child
                 mesh.geometry = new THREE.Geometry().fromBufferGeometry(mesh.geometry)
-                mesh.geometry.faceVertexUvs = [[]]
+                mesh.geometry.faceVertexUvs = [
+                  []
+                ]
                 mesh.updateMatrix()
-                geometry.merge(mesh.geometry,mesh.matrix)
+                geometry.merge(mesh.geometry, mesh.matrix)
               }
             });
             return geometry
           }
-        } else if(result.scenes && result.scenes.length >0){
+        } else if (result.scenes && result.scenes.length > 0) {
           var geometry = new THREE.Geometry()
-          result.scenes.forEach(function(scene) {
-            if(scene.children){
+          result.scenes.forEach(function (scene) {
+            if (scene.children) {
               scene.children.forEach(function (child) {
-                if(child.name && child.name.indexOf('mark_') == 0){
+                if (child.name && child.name.indexOf('mark_') == 0) {
                   marksFromModel.push(child)
                   return;
                 }
-                if(child instanceof THREE.Mesh){
+                if (child instanceof THREE.Mesh) {
                   var mesh = child
                   mesh.geometry = new THREE.Geometry().fromBufferGeometry(mesh.geometry)
-                  mesh.geometry.faceVertexUvs = [[]]
+                  mesh.geometry.faceVertexUvs = [
+                    []
+                  ]
                   mesh.updateMatrix()
-                  geometry.merge(mesh.geometry,mesh.matrix)
-                }else if(child.children){
+                  geometry.merge(mesh.geometry, mesh.matrix)
+                } else if (child.children) {
                   child.children.forEach(function (ch) {
-                    if(ch instanceof THREE.Mesh){
+                    if (ch instanceof THREE.Mesh) {
                       var mesh = ch
                       mesh.geometry = new THREE.Geometry().fromBufferGeometry(mesh.geometry)
-                      mesh.geometry.faceVertexUvs = [[]]
+                      mesh.geometry.faceVertexUvs = [
+                        []
+                      ]
                       mesh.updateMatrix()
-                      geometry.merge(mesh.geometry,mesh.matrix)
+                      geometry.merge(mesh.geometry, mesh.matrix)
                     }
                   });
                 }
@@ -898,31 +1015,33 @@
             }
           });
           return geometry
-        } else if(result instanceof Array && result[0] instanceof THREE.Mesh){
+        } else if (result instanceof Array && result[0] instanceof THREE.Mesh) {
           var geometry = new THREE.Geometry()
           result.forEach(function (child) {
             var mesh = child
-            if(mesh.geometry.index && mesh.geometry.index.array){
+            if (mesh.geometry.index && mesh.geometry.index.array) {
               mesh.geometry = new THREE.Geometry().fromBufferGeometry(mesh.geometry);
             }
-            mesh.geometry.faceVertexUvs = [[]]
+            mesh.geometry.faceVertexUvs = [
+              []
+            ]
             mesh.updateMatrix()
-            geometry.merge(mesh.geometry,mesh.matrix)
+            geometry.merge(mesh.geometry, mesh.matrix)
           });
           return geometry
         }
         return false
       },
-      onModelLoaded (result) {
+      onModelLoaded(result) {
         var geo = this.getMergedGeometry(result)
-        if(!geo){
+        if (!geo) {
           return
         }
         this.addObjectToScene(geo)
       },
-      addObjectToScene (geometry) {
+      addObjectToScene(geometry) {
         this.initScene()
-        if(!geometry.isGeometry){
+        if (!geometry.isGeometry) {
           return
         }
         geometry.computeBoundingBox()
@@ -932,7 +1051,7 @@
         modelMesh = new THREE.Mesh(geometry, defaultMat)
         modelMesh.name = 'modelMesh'
         scene.add(modelMesh)
-        if(marksFromModel.length>0){
+        if (marksFromModel.length > 0) {
           for (var i = 0, l = marksFromModel.length; i < l; i++) {
             scene.add(marksFromModel[i])
           }
@@ -942,22 +1061,22 @@
         directionalLight.position.x = geometry.boundingBox.min.y * 2
         directionalLight.position.y = geometry.boundingBox.min.y * 2
         directionalLight.position.z = geometry.boundingBox.max.z * 2
-        pointLight.position.x = (geometry.boundingBox.min.y+geometry.boundingBox.max.y)/2
-        pointLight.position.y = (geometry.boundingBox.min.y+geometry.boundingBox.max.y)/2
+        pointLight.position.x = (geometry.boundingBox.min.y + geometry.boundingBox.max.y) / 2
+        pointLight.position.y = (geometry.boundingBox.min.y + geometry.boundingBox.max.y) / 2
         pointLight.position.z = geometry.boundingBox.max.z * 2
-        camera.position.set(0,0,Math.max(geometry.boundingBox.max.x*3,geometry.boundingBox.max.y*3,geometry.boundingBox.max.z*3))
-        var maxDim = Math.max(geometry.boundingBox.max.x - geometry.boundingBox.min.x
-          , geometry.boundingBox.max.y - geometry.boundingBox.min.y
-          , geometry.boundingBox.max.z - geometry.boundingBox.min.z)
-        if(maxDim==0){
+        camera.position.set(0, 0, Math.max(geometry.boundingBox.max.x * 3, geometry.boundingBox.max.y * 3, geometry
+          .boundingBox.max.z * 3))
+        var maxDim = Math.max(geometry.boundingBox.max.x - geometry.boundingBox.min.x, geometry.boundingBox.max.y -
+          geometry.boundingBox.min.y, geometry.boundingBox.max.z - geometry.boundingBox.min.z)
+        if (maxDim == 0) {
           alertBox('Model demention error!')
           return
         }
-        brushSize = maxDim/200
+        brushSize = maxDim / 200
         this.initGui()
         this.setBrush(this.getBrushSize(), this.getBrushColor())
         isLoadedModel = true
-        if(this.onModelshow && typeof(this.onModelshow)=='function'){
+        if (this.onModelshow && typeof (this.onModelshow) == 'function') {
           this.onModelshow()
         }
         controls.initPosition()
@@ -969,33 +1088,35 @@
       loadModel(filepath, type) {
         //包含材质
         var loader = null
-        if(type === 'stl')
-        {
+        if (type === 'stl') {
           loader = new STLLoader()
         }
-        if(type === 'obj'){
+        if (type === 'obj') {
           loader = new OBJLoader()
         }
         loader.load(filepath, this.onModelLoaded, this.onLoadModelError)
       },
 
       setMarkObjectsShow(isShow) {
-        for (var i = 0, l = markObjects.length; i < l; i ++) {
+        for (var i = 0, l = markObjects.length; i < l; i++) {
           markObjects[i].visible = isShow
         }
       },
-      getCanvasImg (sidelen,type) {
-        if(!sidelen){
+      getCanvasImg(sidelen, type) {
+        if (!sidelen) {
           return
         }
         type = type || 'all'
         scene.background = new THREE.Color(0xffffff)
-        if(type == 'model'){
+        if (type == 'model') {
           this.setMarkObjectsShow(false)
         }
-        var renderer2 = new THREE.WebGLRenderer({preserveDrawingBuffer:true,antialias:true})
+        var renderer2 = new THREE.WebGLRenderer({
+          preserveDrawingBuffer: true,
+          antialias: true
+        })
         renderer2.setPixelRatio(window.devicePixelRatio)
-        renderer2.setSize(container.clientWidth/3, container.clientHeight/3)
+        renderer2.setSize(container.clientWidth / 3, container.clientHeight / 3)
         renderer2.render(scene, camera)
 
         var canvas = renderer2.domElement
@@ -1006,79 +1127,89 @@
         retCanvas.height = sidelen
         var retCtx = retCanvas.getContext('2d')
         retCtx.fillStyle = '#ffffff'
-        retCtx.fillRect(0,0,retCanvas.width,retCanvas.height)
-        if( w>h ){
-          var sx = (w-h)/2
+        retCtx.fillRect(0, 0, retCanvas.width, retCanvas.height)
+        if (w > h) {
+          var sx = (w - h) / 2
           var sy = 0
           var sw = h
           var sh = h
-        }else{
+        } else {
           var sx = 0
-          var sy = (h-w)/2
+          var sy = (h - w) / 2
           var sw = w
           var sh = w
         }
-        retCtx.drawImage(canvas, sx , sy, sw, sh, 0, 0, sidelen, sidelen);
+        retCtx.drawImage(canvas, sx, sy, sw, sh, 0, 0, sidelen, sidelen);
         var str = retCanvas.toDataURL('image/png');
         scene.background = new THREE.Color(sceneBgColor);
-        if( type == 'model' ){
+        if (type == 'model') {
           this.setMarkObjectsShow(true);
         }
         return str
       },
-      saveimage () {
+      saveimage() {
         const image = this.getCanvasImg(240, 'mark')
         this.snapshot = image
       },
 
-      getMarksSTL (callback) {
-        if(!markObjects.length){
+      getMarksSTL(callback) {
+        if (!markObjects.length) {
           callback(false)
           return
         }
         var output = new THREE.Mesh(this.getMergedGeometry(markObjects), defaultMat)
-        var result = new STLExporter().parse(output, {binary: true})
+        var result = new STLExporter().parse(output, {
+          binary: true
+        })
         callback(result);
       },
-      exportMarks () {
+      exportMarks() {
         this.getMarksSTL((outputStr) => {
-          if(!outputStr){
-            return 
+          if (!outputStr) {
+            return
           }
-          var blob = new Blob([outputStr], {type:'application/octet-stream'})
+          var blob = new Blob([outputStr], {
+            type: 'application/octet-stream'
+          })
           var downlink = document.getElementById('downlink')
           downlink.href = URL.createObjectURL(blob)
           downlink.download = 'exportMark.stl'
           downlink.click()
         })
       },
-      exportSTL () {
-        const result = new STLExporter().parse(modelMesh, {binary: true })
-        var blob = new Blob([result], {type:'application/octet-stream'})
+      exportSTL() {
+        const result = new STLExporter().parse(modelMesh, {
+          binary: true
+        })
+        var blob = new Blob([result], {
+          type: 'application/octet-stream'
+        })
         var downlink = document.getElementById('downlink')
         downlink.href = URL.createObjectURL(blob)
         downlink.download = 'exportSTL.stl'
         downlink.click()
       },
 
-      delMark () {
-        if(!markObjects.length){
+      delMark() {
+        if (!markObjects.length) {
           return
         }
         this.clearMarks()
       },
 
-      importMODEL () {
+      importMODEL() {
+        labelIDNum = 0
         const fileName = document.getElementById('fileSTL')
-        const fileType = fileName.value.substr(fileName.value.lastIndexOf('.')+1)
-        if(fileType !== 'stl' && fileType !== 'obj'){
+        const fileType = fileName.value.substr(fileName.value.lastIndexOf('.') + 1)
+        if (fileType !== 'stl' && fileType !== 'obj') {
           alert('不支持此类型')
           return
         }
-        this.loadModel('../static/' + fileName.value.split('\\')[fileName.value.split('\\').length-1], fileType)
+        this.loadModel('../static/' + fileName.value.split('\\')[fileName.value.split('\\').length - 1], fileType)
+        // this.loadModel(fileName.value, fileType)
       },
 
-      seleteVal(){
+      seleteVal() {
         // 获取对象盒子模型
         var Box = new THREE.Box3().setFromObject(modelMesh)
         // var point_max =new THREE.Vector3()
@@ -1099,78 +1230,78 @@
         // point_min_left.set(Box.max.x,Box.min.y,Box.min.z)
 
         // Plane作为元素创建数组，Plane的方向法向量、位置根据需要随意定义
-        if(this.select2 === 'x轴这边'){
+        if (this.select2 === 'x轴这边') {
           this.r_section = parseInt(Box.max.x)
           this.sectionSizeMin = parseInt(Box.min.x)
           this.sectionSizeMax = parseInt(Box.max.x)
           PlaneArr = [
             //创建一个垂直x轴的平面
-            new THREE.Plane(new THREE.Vector3(1,0,0), parseInt(Box.max.x)),
+            new THREE.Plane(new THREE.Vector3(1, 0, 0), parseInt(Box.max.x)),
           ]
           renderer.clippingPlanes = PlaneArr
           // 通过PlaneHelper辅助可视化显示剪裁平面Plane
           // var helper_area = Math.abs(parseInt(Box.max.y)) + Math.abs(parseInt(Box.min.y))
           // this.setHelper(PlaneArr[0], helper_area)
         }
-        if(this.select2 === 'x轴那边'){
+        if (this.select2 === 'x轴那边') {
           this.r_section = parseInt(Box.max.x)
           this.sectionSizeMin = parseInt(Box.min.x)
           this.sectionSizeMax = parseInt(Box.max.x)
           PlaneArr = [
             //创建一个垂直x轴的平面
-            new THREE.Plane(new THREE.Vector3(-1,0,0),parseInt(Box.max.x)),
+            new THREE.Plane(new THREE.Vector3(-1, 0, 0), parseInt(Box.max.x)),
           ]
           renderer.clippingPlanes = PlaneArr
           // 通过PlaneHelper辅助可视化显示剪裁平面Plane
           // var helper_area = Math.abs(parseInt(Box.max.y)) + Math.abs(parseInt(Box.min.y))
           // this.setHelper(PlaneArr[0], helper_area)
         }
-        if(this.select2 === 'y轴这边'){
+        if (this.select2 === 'y轴这边') {
           this.r_section = parseInt(Box.max.y)
           this.sectionSizeMin = parseInt(Box.min.y)
           this.sectionSizeMax = parseInt(Box.max.y)
           PlaneArr = [
             //创建一个垂直y轴的平面
-            new THREE.Plane(new THREE.Vector3(0,1,0), parseInt(Box.max.y)),
+            new THREE.Plane(new THREE.Vector3(0, 1, 0), parseInt(Box.max.y)),
           ]
           renderer.clippingPlanes = PlaneArr
           // 通过PlaneHelper辅助可视化显示剪裁平面Plane
           // var helper_area = Math.abs(parseInt(Box.max.x)) + Math.abs(parseInt(Box.max.z))
           // this.setHelper(PlaneArr[0], helper_area)
         }
-        if(this.select2 === 'y轴那边'){
+        if (this.select2 === 'y轴那边') {
           this.r_section = parseInt(Box.max.y)
           this.sectionSizeMin = parseInt(Box.min.y)
           this.sectionSizeMax = parseInt(Box.max.y)
           PlaneArr = [
             //创建一个垂直y轴的平面
-            new THREE.Plane(new THREE.Vector3(0,-1,0), parseInt(Box.max.y)),
+            new THREE.Plane(new THREE.Vector3(0, -1, 0), parseInt(Box.max.y)),
           ]
           renderer.clippingPlanes = PlaneArr
           // 通过PlaneHelper辅助可视化显示剪裁平面Plane
           // var helper_area = Math.abs(parseInt(Box.max.x)) + Math.abs(parseInt(Box.max.z))
           // this.setHelper(PlaneArr[0], helper_area)
         }
-        if(this.select2 === 'z轴这边'){
+        if (this.select2 === 'z轴这边') {
           this.r_section = parseInt(Box.max.z)
           this.sectionSizeMin = parseInt(Box.min.z)
           this.sectionSizeMax = parseInt(Box.max.z)
           PlaneArr = [
             //创建一个垂直z轴的平面
-            new THREE.Plane(new THREE.Vector3(0,0,1), parseInt(Box.max.z)),
+            new THREE.Plane(new THREE.Vector3(0, 0, 1), parseInt(Box.max.z)),
           ]
           renderer.clippingPlanes = PlaneArr
           // 通过PlaneHelper辅助可视化显示剪裁平面Plane
           // var helper_area = Math.abs(parseInt(Box.max.x)) + Math.abs(parseInt(Box.max.z))
           // this.setHelper(PlaneArr[0], helper_area)
         }
-        if(this.select2 === 'z轴那边'){
+        if (this.select2 === 'z轴那边') {
           this.r_section = parseInt(Box.max.z)
           this.sectionSizeMin = parseInt(Box.min.z)
           this.sectionSizeMax = parseInt(Box.max.z)
           PlaneArr = [
             //创建一个垂直z轴的平面
-            new THREE.Plane(new THREE.Vector3(0,0,-1), parseInt(Box.max.z)),
+            new THREE.Plane(new THREE.Vector3(0, 0, -1), parseInt(Box.max.z)),
           ]
           renderer.clippingPlanes = PlaneArr
           // 通过PlaneHelper辅助可视化显示剪裁平面Plane
@@ -1178,20 +1309,20 @@
           // this.setHelper(PlaneArr[0], helper_area)
         }
       },
-      setHelper(planeArr, helperArea){
+      setHelper(planeArr, helperArea) {
         var x = scene.getObjectByName('helper')
-        if(x !== undefined){
+        if (x !== undefined) {
           scene.remove(x)
         }
         var helper = new THREE.PlaneHelper(planeArr, helperArea, 0xffff00)
         scene.add(helper)
       },
-      onChangeSection(){
+      onChangeSection() {
         const section = document.getElementById('srange')
         PlaneArr[0].constant = section.value
       },
 
-      distance(){
+      distance() {
         // 模型空间距离测量
         // var material = new THREE.LineBasicMaterial({color: 0xffff00})
         // var geometry = new THREE.Geometry()
@@ -1204,28 +1335,28 @@
         // this.addText(-10,0,10,this.toDistance(p1, p2))
         CalDistance = true
       },
-      noDistance(){
+      noDistance() {
         // 删除当前line
         if (scene.getObjectByName('line_move')) {
           scene.remove(scene.getObjectByName('line_move'))
         }
-        pointsArray.splice(0,pointsArray.length)
+        pointsArray.splice(0, pointsArray.length)
         CalDistance = false
       },
       getIntersects(event) {
-        mouse.x = ((event.clientX-mouseOffset.left) / renderer.domElement.clientWidth) * 2 - 1
-        mouse.y = -((event.clientY-mouseOffset.top) / renderer.domElement.clientHeight) * 2 + 1
+        mouse.x = ((event.clientX - mouseOffset.left) / renderer.domElement.clientWidth) * 2 - 1
+        mouse.y = -((event.clientY - mouseOffset.top) / renderer.domElement.clientHeight) * 2 + 1
         raycaster.setFromCamera(mouse, camera)
         var sceneObjects = markObjects.concat(modelMesh)
         var intersects = raycaster.intersectObjects(sceneObjects)
         return intersects
       },
-      toDistance(p1,p2) {
+      toDistance(p1, p2) {
         var distance = p1.distanceTo(p2)
         return distance.toFixed(2)
       },
 
-      angle(){
+      angle() {
         // // 角度
         // var material = new THREE.LineBasicMaterial({color: 0xffff00})
         // var p1 = new THREE.Vector3(-10, 0, 10)
@@ -1251,7 +1382,7 @@
 
         // var c = p1.angleTo(p2)
         // this.addText(center.x,center.y,center.z,THREE.Math.radToDeg(c))
-        
+
         // var r = p1.distanceTo(new THREE.Vector3(0, 0, 0))
         // var ag_center = center.addScalar(r-(center.distanceTo(new THREE.Vector3(0, 0, 0))))
         // var geometry_a = new THREE.Geometry()
@@ -1264,15 +1395,15 @@
 
         CalAngle = true
       },
-      noAngle(){
+      noAngle() {
         if (scene.getObjectByName('line_move')) {
           scene.remove(scene.getObjectByName('line_move'))
         }
-        pointsArray.splice(0,pointsArray.length)
+        pointsArray.splice(0, pointsArray.length)
         CalAngle = false
       },
 
-      surfaceArea(){
+      surfaceArea() {
         // // 测量表面积
         // var area = 0.0
         // // 对于不规则曲面，细分程度越高，面积计算精度越高
@@ -1289,11 +1420,11 @@
 
         CalArea = true
       },
-      noSurfaceArea(){
-        areaObjects.splice(0,areaObjects.length)
+      noSurfaceArea() {
+        areaObjects.splice(0, areaObjects.length)
         CalArea = false
       },
-      AreaOfTriangle(p1, p2, p3){
+      AreaOfTriangle(p1, p2, p3) {
         var v1 = new THREE.Vector3()
         var v2 = new THREE.Vector3()
         // 通过两个顶点坐标计算其中两条边构成的向量
@@ -1301,36 +1432,36 @@
         v2 = p1.clone().sub(p3)
         var v3 = new THREE.Vector3()
         // 三角形面积计算
-        v3.crossVectors(v1,v2)
-        var s = v3.length()/2
+        v3.crossVectors(v1, v2)
+        var s = v3.length() / 2
         return s
       },
 
-      addLabel(){
+      addLabel() {
         AddLabel = true
       },
-      noAddLabel(){
-        labelObjects.splice(0,labelObjects.length)
+      noAddLabel() {
+        labelObjects.splice(0, labelObjects.length)
         AddLabel = false
         AddLabelLine = false
       },
-      enterUP(event){
-        if(event.keyCode ==13){
+      enterUP(event) {
+        if (event.keyCode == 13) {
           const text = document.getElementById(event.path[0].id)
           text.disabled = 'disabled'
         }
       },
       divRender(label) {
         // 计算三维坐标对应的屏幕坐标
-        if(label.length > 0){
-          for(var i = 0; i < label.length; i++){
+        if (label.length > 0) {
+          for (var i = 0; i < label.length; i++) {
             //计算三维坐标对应的屏幕坐标
             var windowPosition = this.transPosition(label[i].position)
             var left = windowPosition.x
             var top = windowPosition.y
             // 设置div屏幕位置
             let div = document.getElementById(label[i].inputElement.id)
-            if(div !== null){
+            if (div !== null) {
               div.style.left = left + 'px'
               div.style.top = top + 'px'
             }
@@ -1339,29 +1470,83 @@
       },
 
     },
-    mounted () {
+    mounted() {
       this.init()
     }
   }
 </script>
 
 <style scoped>
-#container{
-  width: 1600px;
-  margin: 0 auto;
-  height: 800px;
-  overflow: hidden;
-}
+  #container {
+    width: 88%;
+    margin: 0 auto;
+    height: 800px;
+    overflow: hidden;
+  }
 
-.title{
-  position: absolute;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.5);
-  line-height: 1;
-  border-radius: 5px;
-}
+  #menu {
+    width: 10%;
+    height: 800px;
+    border: 1px solid #000;
+  }
 
-.tap{
-  position: absolute;
-}
+  .tabs {
+    width: 400px;
+    margin: 30px auto;
+    border: 1px solid #eee;
+    box-sizing: border-box;
+  }
+
+  .tabs nav {
+    height: 40px;
+    text-align: center;
+    line-height: 40px;
+    overflow: hidden;
+    background-color: #06f;
+    display: flex;
+  }
+
+  nav a {
+    display: block;
+    width: 100px;
+    border-right: 1px solid #eee;
+    color: #fff;
+    text-decoration: none;
+  }
+
+  nav a:hover {
+    color: #fff;
+    text-decoration: none;
+  }
+
+  nav a:last-child {
+    border-right: 0 none;
+  }
+
+  nav a.active {
+    background: #000;
+    color: #fff;
+    text-decoration: none;
+  }
+
+  .cont {
+    overflow: hidden;
+    display: none;
+  }
+
+  .cont ol {
+    line-height: 30px;
+  }
+
+  .title {
+    position: absolute;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.5);
+    line-height: 1;
+    border-radius: 5px;
+  }
+
+  .tap {
+    position: absolute;
+  }
 </style>
