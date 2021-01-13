@@ -54,7 +54,6 @@
         <a href="javascript:;" data-cont="angle" @click="clicktab">角度</a>
       </nav>
       <section id="tag">
-        <button>标记</button>
       </section>
       <section class="cont" id="label">
         <button>标签</button>
@@ -124,6 +123,9 @@
   let mouseRightDown = false
   let font = ''
   let PlaneArr = []
+  // 标记
+  let tagObjects = []
+  let tagName = 0
   // 计算距离
   let pointsArray = []
   let CalDistance = false
@@ -140,7 +142,7 @@
   let labelRenderer = ''
   let labelIDNum = 0
   // 用来记录所有数据
-  tagRecordModelData = []  // 记录标记数据
+  let tagRecordModelData = [] // 记录标记数据
 
   export default {
     name: "vue-three",
@@ -165,6 +167,7 @@
       }
     },
     methods: {
+
       clicktab() {
         var navs = document.querySelectorAll('nav a')
         document.querySelector('section').style.display = 'block'
@@ -182,7 +185,7 @@
           }
         }
       },
-      addSection(type, content){
+      addSection(type, content) {
         /*相关内容添加进对应的Section */
 
       },
@@ -366,6 +369,8 @@
           }
           markObjects = []
         }
+        // 删除tag标签下的所有元素
+        document.getElementById('tag').innerHTML = ''
       },
       animate() {
         requestAnimationFrame(this.animate);
@@ -672,6 +677,9 @@
           this.addText(midPoint.x, midPoint.y, midPoint.z, area.toFixed(2))
           areaObjects.splice(0, areaObjects.length)
           CalArea = false
+          mouseDown = false
+          mouseRightDown = false
+          return
         }
         /*计算表面积 */
 
@@ -716,8 +724,35 @@
 
           labelObjects.splice(0, labelObjects.length)
           AddLabel = false
+          mouseDown = false
+          mouseRightDown = false
+          return
         }
         /*添加标签 */
+
+        /*添加标记内容 */
+        if (tagObjects.length > 0) {
+          tagName++
+          var tmp_tagObjects = {}
+          tmp_tagObjects.model = JSON.parse(JSON.stringify(tagObjects))
+          tmp_tagObjects.name = 'tag_' + (tagName).toString()
+          tagRecordModelData.push(tmp_tagObjects)
+          tagObjects.splice(0, tagObjects.length) // 先清除临时标记记录
+
+          // 显示进列表中
+          const ui_tag = document.getElementById('tag')
+          var liElement = document.createElement('li')
+          liElement.style.listStyle = 'none'
+          liElement.id = tmp_tagObjects.name + 'li'
+          var buttonElement = document.createElement('input')
+          buttonElement.type = 'button'
+          buttonElement.id = tmp_tagObjects.name
+          buttonElement.value = tmp_tagObjects.name
+          buttonElement.addEventListener('mousedown', this.deleteTag, false)
+          liElement.appendChild(buttonElement)
+          ui_tag.appendChild(liElement)
+        }
+        /*添加标记内容 */
 
         mouseDown = false
         mouseRightDown = false
@@ -765,6 +800,7 @@
         voxel.name = 'mark_' + markObjects.length
         scene.add(voxel)
         markObjects.push(voxel)
+        tagObjects.push(voxel)
       },
       pointDistanceThan(point1, point2, distance) {
         if (Math.abs(point1.x - point2.x) >= distance) {
@@ -1198,7 +1234,12 @@
       },
 
       importMODEL() {
+
+        /*初始化 */
         labelIDNum = 0
+        tagName = 0
+        /*初始化 */
+
         const fileName = document.getElementById('fileSTL')
         const fileType = fileName.value.substr(fileName.value.lastIndexOf('.') + 1)
         if (fileType !== 'stl' && fileType !== 'obj') {
@@ -1468,6 +1509,24 @@
           }
         }
       },
+
+      deleteTag(event){
+        /*删除单个标签 */
+        for (var y = 0, l = tagRecordModelData.length; y < l; y++) {
+          if(tagRecordModelData[y].name === event.path[0].id){
+            if (tagRecordModelData[y].model.length > 0) {
+              for (var j = 0, l = tagRecordModelData[y].model.length; j < l; j++) {
+                scene.remove(tagRecordModelData[y].model[j])
+              }              
+            }
+            tagRecordModelData.splice(y, 1)
+            var parent=document.getElementById(event.path[0].id+'li')
+            var son=document.getElementById(event.path[0].id)
+            parent.removeChild(son)
+          }
+        }
+        
+      }
 
     },
     mounted() {
