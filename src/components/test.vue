@@ -41,7 +41,8 @@
       <button @click="noAngle">停止测量角度</button>
       <button @click="surfaceArea">测量表面积</button>
       <button @click="noSurfaceArea">停止测量表面积</button>
-      <button @click="delMark">删除标注</button>
+      <button @click="delMark">删除所有标注</button>
+      <button @click="delAllLabel">删除所有标签</button>
       <button @click="saveimage">获取快照</button>
       <button @click="exportSTL">保存模型到本地</button>
       <a href="" id="downlink" style="display: none;"></a>
@@ -56,13 +57,10 @@
       <section id="tag">
       </section>
       <section class="cont" id="label">
-        <button>标签</button>
       </section>
       <section class="cont" id="distance">
-        <button>距离</button>
       </section>
       <section class="cont" id="angle">
-        <button>角度</button>
       </section>
     </div>
     <div id="container" style="float:right;"></div>
@@ -153,11 +151,15 @@
   let AddLabel = false
   let AddLabelLine = false
   let labelObjects = []
+  let tmp_labelObjects = []
   let labelTextBox = []
   let labelRenderer = ''
   let labelIDNum = 0
+  let tagLabelUUID = []
+  let tagLabelName = 0
   // 用来记录所有数据
   let tagRecordModelData = [] // 记录标记数据
+  let labelRecordModelData = []  // 记录标签数据
 
   export default {
     name: "vue-three",
@@ -711,13 +713,14 @@
           labelIDNum++
           // 添加标签-开始画线
           // AddLabelLine = true
-          var c = parseInt(labelObjects.length / 2)
-          // var p1 = labelObjects[c].position.x
-          // var p2 = labelObjects[c].position.y
-          // var p3 = labelObjects[c].position.z
+          var c = parseInt(tmp_labelObjects.length / 2)
+          // var p1 = tmp_labelObjects[c].position.x
+          // var p2 = tmp_labelObjects[c].position.y
+          // var p3 = tmp_labelObjects[c].position.z
           // this.addText(p1, p2, p3, '测试')
 
-          var windowPosition = this.transPosition(labelObjects[c].position)
+          /*增加输入框 */
+          var windowPosition = this.transPosition(tmp_labelObjects[c].position)
           var left = windowPosition.x
           var top = windowPosition.y
           const page1 = document.getElementById('page')
@@ -732,8 +735,9 @@
           // 显示模型标签的div添加，用来坐标更新等
           var input = {}
           input.inputElement = inputElement
-          input.position = labelObjects[c].position
+          input.position = tmp_labelObjects[c].position
           labelTextBox.push(input)
+          /*增加输入框 */
 
           // var inputElement = document.createElement('input')
           // const page1 = document.getElementById('page')
@@ -745,7 +749,40 @@
           // scene.add(modelLabel)
           // labelObjects[c].add(modelLabel)
 
-          labelObjects.splice(0, labelObjects.length)
+          /*显示进列表中 */
+          if(tagLabelUUID.length > 0){
+            tagLabelName++
+            var tmp_tagLabelUUID = {}
+            tmp_tagLabelUUID.model = JSON.parse(JSON.stringify(tagLabelUUID))
+            tmp_tagLabelUUID.element = inputElement.id
+            tmp_tagLabelUUID.name = 'label_' + (tagLabelName).toString()
+            labelRecordModelData.push(tmp_tagLabelUUID)
+            tagLabelUUID.splice(0, tagLabelUUID.length)
+            
+            var ui_tag = document.getElementById('label')
+            var liElement = document.createElement('li')
+            liElement.style.listStyle = 'none'
+            liElement.id = tmp_tagLabelUUID.name + 'li'
+
+            var buttonViewElement = document.createElement('input')
+            buttonViewElement.type = 'button'
+            buttonViewElement.id = tmp_tagLabelUUID.name + '_v'
+            buttonViewElement.value = tmp_tagLabelUUID.name
+            buttonViewElement.addEventListener('mousedown', this.checkLabel, false)
+
+            var buttonDelElement = document.createElement('input')
+            buttonDelElement.type = 'button'
+            buttonDelElement.id = tmp_tagLabelUUID.name + '_d'
+            buttonDelElement.value = '删除'
+            buttonDelElement.addEventListener('mousedown', this.deleteLabel, false)
+
+            liElement.appendChild(buttonViewElement)
+            liElement.appendChild(buttonDelElement)
+            ui_tag.appendChild(liElement)
+          }
+          /*显示进列表中 */
+
+          tmp_labelObjects.splice(0, tmp_labelObjects.length)
           AddLabel = false
           mouseDown = false
           mouseRightDown = false
@@ -763,7 +800,7 @@
           tagObjects.splice(0, tagObjects.length) // 先清除临时标记记录
 
           // 显示进列表中
-          const ui_tag = document.getElementById('tag')
+          var ui_tag = document.getElementById('tag')
           var liElement = document.createElement('li')
           liElement.style.listStyle = 'none'
           liElement.id = tmp_tagObjects.name + 'li'
@@ -820,8 +857,12 @@
           prePoint = intersect.point
           voxel_l.position.copy(intersect.point)
           voxel_l.name = 'label_' + labelObjects.length
-          // labelObjects.splice(0,labelObjects.length)
+          scene.add(voxel_l)
           labelObjects.push(voxel_l)
+          // 记入当前的，用来显示文本坐标
+          tmp_labelObjects.push(voxel_l)
+          tagLabelUUID.push(voxel_l.uuid)
+          return
         }
         /*添加标签 */
 
@@ -1520,7 +1561,6 @@
         AddLabel = true
       },
       noAddLabel() {
-        labelObjects.splice(0, labelObjects.length)
         AddLabel = false
         AddLabelLine = false
       },
@@ -1580,7 +1620,7 @@
       //   composer.addPass( bloomPass )
       // },
       checkTag(event){
-        /*查看单个标签 */
+        /*查看单个标记 */
         var buttonID = event.target.id.replace('_v', '')
 
         for (var y = 0, l = tagRecordModelData.length; y < l; y++) {
@@ -1603,7 +1643,7 @@
         }
       },
       deleteTag(event){
-        /*删除单个标签 */
+        /*查看单个标记 */
         var buttonID = event.target.id.replace('_d', '')
         for (var y = 0, l = tagRecordModelData.length; y < l; y++) {
           // 删除的是哪个模型
@@ -1624,6 +1664,36 @@
             var son = document.getElementById(buttonID+'li')
             parent.removeChild(son)
           }
+        }
+      },
+
+      checkLabel(event){
+        // 查看选定标签
+      },
+      deleteLabel(event){
+        // 删除选定标签
+      },
+      delAllLabel(){
+        // 删除所有标签
+        if (!labelObjects.length) {
+          return
+        }
+        // 先删除场景里的标记
+        if (labelObjects.length > 0) {
+          for (var i = 0, l = labelObjects.length; i < l; i++) {
+            scene.remove(labelObjects[i])
+          }
+          labelObjects = []
+        }
+        // 在删除添加的text
+        if (labelTextBox.length > 0) {
+          for (var i = 0, l = labelTextBox.length; i < l; i++) {
+            var l_id = labelTextBox[i].inputElement.id
+            var parent = document.getElementById('page')
+            var son = document.getElementById(l_id)
+            parent.removeChild(son)
+          }
+          labelTextBox = []
         }
       },
 
