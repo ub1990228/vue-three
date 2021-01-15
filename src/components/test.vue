@@ -89,7 +89,18 @@
   import {
     TrackballControls
   } from '@/assets/js/three_TrackballControlsTH.js'
-  // import { GUI } from "./jsm/libs/dat.gui.module.js"
+  import {
+    EffectComposer
+  } from 'three/examples/jsm/postprocessing/EffectComposer'
+  import {
+    RenderPass
+  } from 'three/examples/jsm/postprocessing/RenderPass'
+  import {
+    OutlinePass
+  } from 'three/examples/jsm/postprocessing/OutlinePass'
+  import {
+    UnrealBloomPass
+  } from 'three/examples/jsm/postprocessing/UnrealBloomPass'
 
   const OrbitControls = require('three-orbit-controls')(THREE);
 
@@ -123,6 +134,10 @@
   let mouseRightDown = false
   let font = ''
   let PlaneArr = []
+  // 选中高光效果
+  let composer = ''
+  let renderPass = ''
+  let outlinePass = ''
   // 标记
   let tagObjects = []
   let tagName = 0
@@ -327,6 +342,14 @@
         scene = new THREE.Scene()
         scene.background = new THREE.Color(sceneBgColor)
         scene.add(camera)
+
+        /*添加外框边线效果 */
+				// composer = new EffectComposer( renderer )
+				// renderPass = new RenderPass( scene, camera )
+				// composer.addPass( renderPass )
+				// outlinePass = new OutlinePass( new THREE.Vector2( window.innerWidth, window.innerHeight ), scene, camera )
+				// composer.addPass( outlinePass )
+        /*添加外框边线效果 */
 
         // xyz辅助坐标轴
         // var axes = new THREE.AxisHelper(50)
@@ -744,12 +767,21 @@
           var liElement = document.createElement('li')
           liElement.style.listStyle = 'none'
           liElement.id = tmp_tagObjects.name + 'li'
-          var buttonElement = document.createElement('input')
-          buttonElement.type = 'button'
-          buttonElement.id = tmp_tagObjects.name
-          buttonElement.value = tmp_tagObjects.name
-          buttonElement.addEventListener('mousedown', this.deleteTag, false)
-          liElement.appendChild(buttonElement)
+
+          var buttonViewElement = document.createElement('input')
+          buttonViewElement.type = 'button'
+          buttonViewElement.id = tmp_tagObjects.name + '_v'
+          buttonViewElement.value = tmp_tagObjects.name
+          buttonViewElement.addEventListener('mousedown', this.checkTag, false)
+
+          var buttonDelElement = document.createElement('input')
+          buttonDelElement.type = 'button'
+          buttonDelElement.id = tmp_tagObjects.name + '_d'
+          buttonDelElement.value = '删除'
+          buttonDelElement.addEventListener('mousedown', this.deleteTag, false)
+
+          liElement.appendChild(buttonViewElement)
+          liElement.appendChild(buttonDelElement)
           ui_tag.appendChild(liElement)
         }
         /*添加标记内容 */
@@ -800,7 +832,7 @@
         voxel.name = 'mark_' + markObjects.length
         scene.add(voxel)
         markObjects.push(voxel)
-        tagObjects.push(voxel)
+        tagObjects.push(voxel.uuid)
       },
       pointDistanceThan(point1, point2, distance) {
         if (Math.abs(point1.x - point2.x) >= distance) {
@@ -939,6 +971,12 @@
         // 标签渲染
         // labelRenderer.render(scene, camera)
         this.divRender(labelTextBox)
+
+        // 高光渲染
+        if(composer !== ''){
+          composer.render()
+        }
+
         renderer.render(scene, camera)
       },
       setBrush(_brushSize, _brushColor) {
@@ -1510,23 +1548,98 @@
         }
       },
 
+      // outlineObj(selectedObjects){
+      //   /*模型边缘高亮显示 */
+      //   composer = new EffectComposer( renderer ) // 特效组件
+      //   // renderPass = new RenderPass( scene, camera )
+      //   // composer.addPass( renderPass ) // 特效渲染
+      //   outlinePass = new OutlinePass( new THREE.Vector2( window.innerWidth, window.innerHeight ), scene, camera )
+      //   composer.addPass( outlinePass ) // 加入高光特效
+      //   // outlinePass.pulsePeriod = 2 //数值越大，律动越慢
+      //   outlinePass.visibleEdgeColor.set( 0xFFFF99 ) // 高光颜色
+      //   outlinePass.hiddenEdgeColor.set( 0x000000 )// 阴影颜色
+      //   outlinePass.usePatternTexture = false // 使用纹理覆盖
+      //   outlinePass.edgeStrength = 5 // 高光边缘强度
+      //   outlinePass.edgeGlow = 1 // 边缘微光强度
+      //   outlinePass.edgeThickness = 1 // 高光厚度
+      //   outlinePass.selectedObjects = selectedObjects // 需要高光的obj
+      // },
+      // unrealObj(selectedObjects){
+      //   /*添加模型眩光 */
+      //   var renderScene = new RenderPass( scene, camera )
+      //   //Bloom通道创建
+      //   var bloomPass = new UnrealBloomPass( new THREE.Vector2( window.innerWidth, window.innerHeight ), 1.5, 0.4, 0.85 )
+      //   bloomPass.renderToScreen = true
+      //   bloomPass.threshold = 0
+      //   bloomPass.strength = 1.5
+      //   bloomPass.radius = 0
+      //   composer = new EffectComposer( renderer )
+      //   composer.setSize( window.innerWidth, window.innerHeight )
+      //   composer.addPass( renderScene )
+      //   // 眩光通道bloomPass插入到composer
+      //   composer.addPass( bloomPass )
+      // },
+      checkTag(event){
+        /*查看单个标签 */
+        var buttonID = event.target.id.replace('_v', '')
+
+        for (var y = 0, l = tagRecordModelData.length; y < l; y++) {
+          // 查看的是哪个模型
+          if(tagRecordModelData[y].name === buttonID){
+            // 查看场景中的模型
+            for(var j = 0, l = tagRecordModelData[y].model.length; j < l; j++){
+              var pos = this.findModel(markObjects, tagRecordModelData[y].model[j])
+              if(pos !== -1){
+                // 隐藏
+                if(markObjects[pos].visible === true){
+                  markObjects[pos].visible = false
+                }
+                else{
+                  markObjects[pos].visible = true
+                }
+              }
+            }
+          }
+        }
+      },
       deleteTag(event){
         /*删除单个标签 */
+        var buttonID = event.target.id.replace('_d', '')
         for (var y = 0, l = tagRecordModelData.length; y < l; y++) {
-          if(tagRecordModelData[y].name === event.path[0].id){
-            if (tagRecordModelData[y].model.length > 0) {
-              for (var j = 0, l = tagRecordModelData[y].model.length; j < l; j++) {
-                scene.remove(tagRecordModelData[y].model[j])
-              }              
+          // 删除的是哪个模型
+          if(tagRecordModelData[y].name === buttonID){
+            
+            // 删除场景中的模型
+            for(var j = 0, l = tagRecordModelData[y].model.length; j < l; j++){
+              var pos = this.findModel(markObjects, tagRecordModelData[y].model[j])
+              if(pos !== -1){
+                scene.remove(markObjects[pos])
+                markObjects.splice(pos, 1)
+              }
             }
+            
+            // 删除相应的列表显示
             tagRecordModelData.splice(y, 1)
-            var parent=document.getElementById(event.path[0].id+'li')
-            var son=document.getElementById(event.path[0].id)
+            var parent = document.getElementById('tag')
+            var son = document.getElementById(buttonID+'li')
             parent.removeChild(son)
           }
         }
-        
+      },
+
+      findModel(model, id) {
+        /*查找模型uuid，并返回下标 */
+        if (model.length > 0) {
+          for (var i = 0, l = model.length; i < l; i++) {
+            if(model[i].uuid === id){
+              return i
+            }
+          }
+          return -1
+        }
+        return -1
       }
+        
 
     },
     mounted() {
