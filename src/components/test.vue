@@ -1,6 +1,6 @@
 <template>
   <div id="page">
-    <div style="position: fixed; left:200px; top:30px;height:240px;width:240px;box-shadow:0px 0px 10px #000;">
+    <div style="position: fixed; left:200px; top:30px;height:240px;width:240px;box-shadow:0px 0px 10px #000;display:none;">
       <img :src="snapshot" />
     </div>
     <!-- <div class="tag" id="tag">
@@ -53,6 +53,7 @@
         <a href="javascript:;" data-cont="label" @click="clicktab">标签</a>
         <a href="javascript:;" data-cont="distance" @click="clicktab">距离</a>
         <a href="javascript:;" data-cont="angle" @click="clicktab">角度</a>
+        <a href="javascript:;" data-cont="area" @click="clicktab">面积</a>
       </nav>
       <section id="tag">
       </section>
@@ -61,6 +62,8 @@
       <section class="cont" id="distance">
       </section>
       <section class="cont" id="angle">
+      </section>
+      <section class="cont" id="area">
       </section>
     </div>
     <div id="container" style="float:right;"></div>
@@ -592,7 +595,6 @@
                 this.addText(center.x, center.y, center.z,
                   this.toDistance(pointsArray[0].geometry.vertices[0],
                     pointsArray[1].geometry.vertices[0]))
-                // pointsArray.shift()
                 pointsArray.splice(0, pointsArray.length)
                 scene.add(line)
                 CalDistance = false
@@ -726,7 +728,7 @@
           const page1 = document.getElementById('page')
           var inputElement = document.createElement('input')
           inputElement.type = 'text'
-          inputElement.id = 'label_' + labelIDNum.toString()
+          inputElement.id = 'label_' + labelIDNum.toString() + 't'
           inputElement.style.position = 'absolute'
           inputElement.style.left = left + 'px'
           inputElement.style.top = top + 'px'
@@ -1070,7 +1072,10 @@
         if (result.isGeometry) {
           return result
         } else if (result.isBufferGeometry) {
-          return (new THREE.Geometry().fromBufferGeometry(result))
+          var op_result = new THREE.Geometry().fromBufferGeometry( result )
+          // 模型平衡优化
+          op_result.mergeVertices()
+          return op_result
         } else if (result.geometry && result.geometry.isGeometry) {
           return result.geometry
         } else if (result.geometry && result.geometry.isBufferGeometry) {
@@ -1634,6 +1639,7 @@
                 if(markObjects[pos].visible === true){
                   markObjects[pos].visible = false
                 }
+                // 显示
                 else{
                   markObjects[pos].visible = true
                 }
@@ -1669,9 +1675,54 @@
 
       checkLabel(event){
         // 查看选定标签
+        var buttonID = event.target.id.replace('_v', '')
+        for (var y = 0, l = labelRecordModelData.length; y < l; y++){
+          if(labelRecordModelData[y].name === buttonID){
+            // 先删除场景中的标记
+            for(var j = 0, l = labelRecordModelData[y].model.length; j < l; j++){
+              var pos = this.findModel(labelObjects, labelRecordModelData[y].model[j])
+              if(pos !== -1){
+                // 隐藏
+                if(labelObjects[pos].visible === true){
+                  labelObjects[pos].visible = false
+                  var label_element = document.getElementById(labelRecordModelData[y].name + 't')
+                  label_element.style.display = 'none'
+                }
+                // 显示
+                else{
+                  labelObjects[pos].visible = true
+                  var label_element = document.getElementById(labelRecordModelData[y].name + 't')
+                  label_element.style.display = 'inline'
+                }
+              }
+            }
+          }
+        }
       },
       deleteLabel(event){
         // 删除选定标签
+        var buttonID = event.target.id.replace('_d', '')
+        for (var y = 0, l = labelRecordModelData.length; y < l; y++){
+          if(labelRecordModelData[y].name === buttonID){
+            // 先删除场景中的标记
+            for(var j = 0, l = labelRecordModelData[y].model.length; j < l; j++){
+              var pos = this.findModel(labelObjects, labelRecordModelData[y].model[j])
+              if(pos !== -1){
+                scene.remove(labelObjects[pos])
+                labelObjects.splice(pos, 1)
+              }
+            }
+            // 删除场景中的text
+            var parent_page = document.getElementById('page')
+            var son_text = document.getElementById(labelRecordModelData[y].name + 't')
+            parent_page.removeChild(son_text)
+
+            // 删除相应的列表显示
+            var parent_label = document.getElementById('label')
+            var son_li = document.getElementById(buttonID+'li')
+            parent_label.removeChild(son_li)
+          }
+        }
       },
       delAllLabel(){
         // 删除所有标签
@@ -1695,6 +1746,11 @@
           }
           labelTextBox = []
         }
+      },
+
+      delAllDistance(){
+        // 删除所有测试距离
+
       },
 
       findModel(model, id) {
