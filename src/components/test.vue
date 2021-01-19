@@ -43,6 +43,7 @@
       <button @click="noSurfaceArea">停止测量表面积</button>
       <button @click="delMark">删除所有标注</button>
       <button @click="delAllLabel">删除所有标签</button>
+      <button @click="delAllDistance">删除所有距离</button>
       <button @click="saveimage">获取快照</button>
       <button @click="exportSTL">保存模型到本地</button>
       <a href="" id="downlink" style="display: none;"></a>
@@ -143,9 +144,18 @@
   let tagObjects = []
   let tagName = 0
   // 计算距离
-  let pointsArray = []
+  let tmp_pointsArray = [] // 记录当前点集
+  let distanceArray = []    // 记录场景测试距离的所有点集、线段、精灵标签
+  let tmp_distanceArray = {
+    name:'',
+    pointsArray:[],
+    lineArray:'',
+    elvesArray:''
+  }
+  let disName = 0
   let CalDistance = false
   // 计算角度
+  let a_pointsArray = []
   let CalAngle = false
   // 计算表面积
   let CalArea = false
@@ -165,7 +175,7 @@
   let labelRecordModelData = []  // 记录标签数据
 
   export default {
-    name: "vue-three",
+    name: 'vue-three',
     data() {
       return {
         enableMark: true,
@@ -451,8 +461,8 @@
             var lineMaterial = new THREE.LineBasicMaterial({
               color: 0xffff00
             })
-            if (pointsArray.length < 2) {
-              lineGeometry.vertices.push(pointsArray[0].geometry.vertices[0])
+            if (tmp_pointsArray.length < 2) {
+              lineGeometry.vertices.push(tmp_pointsArray[0].geometry.vertices[0])
               var mouseVector3 = new THREE.Vector3(intersects[0].point.x, intersects[0].point.y, intersects[0].point.z)
               lineGeometry.vertices.push(mouseVector3)
               var line = new THREE.Line(lineGeometry, lineMaterial)
@@ -474,8 +484,8 @@
             var lineMaterial = new THREE.LineBasicMaterial({
               color: 0xffff00
             })
-            if (pointsArray.length < 2) {
-              lineGeometry.vertices.push(pointsArray[0].geometry.vertices[0])
+            if (a_pointsArray.length < 2) {
+              lineGeometry.vertices.push(a_pointsArray[0].geometry.vertices[0])
               var mouseVector3 = new THREE.Vector3(intersects[0].point.x, intersects[0].point.y, intersects[0].point.z)
               lineGeometry.vertices.push(mouseVector3)
               var line = new THREE.Line(lineGeometry, lineMaterial)
@@ -576,27 +586,64 @@
                 size: 1
               })
               var points = new THREE.Points(pointsGeometry, pointsMaterial)
-              pointsArray.push(points)
-              /* 创建线段 */
-              var lineGeometry = new THREE.Geometry();
-              var lineMaterial = new THREE.LineBasicMaterial({
-                color: 0xffff00
-              })
-              if (pointsArray.length >= 2) {
-                lineGeometry.vertices.push(pointsArray[0].geometry.vertices[0], pointsArray[1].geometry.vertices[0])
+              tmp_pointsArray.push(points)
+              tmp_distanceArray.pointsArray.push(points)
+              if (tmp_pointsArray.length >= 2) {
+                /* 创建线段 */
+                var lineGeometry = new THREE.Geometry()
+                var lineMaterial = new THREE.LineBasicMaterial({color: 0xffff00})
+                lineGeometry.vertices.push(tmp_pointsArray[0].geometry.vertices[0], tmp_pointsArray[1].geometry.vertices[0])
                 var line = new THREE.Line(lineGeometry, lineMaterial)
                 // 测量距离并显示
                 // 求中点
-                var line3 = new THREE.Line3()
-                line3.start = pointsArray[0].geometry.vertices[0]
-                line3.end = pointsArray[1].geometry.vertices[0]
+                var line_c = new THREE.Line3()
+                line_c.start = tmp_pointsArray[0].geometry.vertices[0]
+                line_c.end = tmp_pointsArray[1].geometry.vertices[0]
                 var center = new THREE.Vector3()
-                line3.getCenter(center)
-                this.addText(center.x, center.y, center.z,
-                  this.toDistance(pointsArray[0].geometry.vertices[0],
-                    pointsArray[1].geometry.vertices[0]))
-                pointsArray.splice(0, pointsArray.length)
+                line_c.getCenter(center)
+                var textOBJ = this.addText(center.x, center.y, center.z,
+                  this.toDistance(tmp_pointsArray[0].geometry.vertices[0],
+                    tmp_pointsArray[1].geometry.vertices[0]))
+                scene.add(textOBJ)
+                tmp_pointsArray.splice(0, tmp_pointsArray.length)
+                // 求中点
+
+                disName++
+                tmp_distanceArray.name = 'distance_' + disName
+                tmp_distanceArray.elvesArray = textOBJ
+                tmp_distanceArray.lineArray = line
+                console.log(line)
+                // 对象深拷贝
+                distanceArray.push(JSON.parse(JSON.stringify(tmp_distanceArray)))
+                console.log(distanceArray)
                 scene.add(line)
+
+                /*显示进列表中 */
+                if(distanceArray.length > 0){
+                  var ui_distance = document.getElementById('distance')
+                  var liElement = document.createElement('li')
+                  liElement.style.listStyle = 'none'
+                  liElement.id = tmp_distanceArray.name + 'li'
+
+                  var buttonViewElement = document.createElement('input')
+                  buttonViewElement.type = 'button'
+                  buttonViewElement.id = tmp_distanceArray.name + '_v'
+                  buttonViewElement.value = tmp_distanceArray.name
+                  buttonViewElement.addEventListener('mousedown', this.checkDistance, false)
+
+                  var buttonDelElement = document.createElement('input')
+                  buttonDelElement.type = 'button'
+                  buttonDelElement.id = tmp_distanceArray.name + '_d'
+                  buttonDelElement.value = '删除'
+                  buttonDelElement.addEventListener('mousedown', this.deleteDistance, false)
+
+                  liElement.appendChild(buttonViewElement)
+                  liElement.appendChild(buttonDelElement)
+                  ui_distance.appendChild(liElement)
+                  tmp_distanceArray.pointsArray.splice(0,tmp_distanceArray.pointsArray.length)
+                }
+                /*显示进列表中 */
+
                 CalDistance = false
               }
               scene.add(points)
@@ -617,31 +664,32 @@
                 size: 1
               })
               var points = new THREE.Points(pointsGeometry, pointsMaterial)
-              pointsArray.push(points)
+              a_pointsArray.push(points)
               /* 创建线段 */
               var lineGeometry = new THREE.Geometry();
               var lineMaterial = new THREE.LineBasicMaterial({
                 color: 0xffff00
               })
-              if (pointsArray.length >= 2) {
-                lineGeometry.vertices.push(pointsArray[0].geometry.vertices[0], pointsArray[1].geometry.vertices[0])
+              if (a_pointsArray.length >= 2) {
+                lineGeometry.vertices.push(a_pointsArray[0].geometry.vertices[0], a_pointsArray[1].geometry.vertices[0])
                 var line = new THREE.Line(lineGeometry, lineMaterial)
                 // 测量角度
                 // 求中点
                 var line3 = new THREE.Line3()
-                line3.start = pointsArray[0].geometry.vertices[0]
-                line3.end = pointsArray[1].geometry.vertices[0]
+                line3.start = a_pointsArray[0].geometry.vertices[0]
+                line3.end = a_pointsArray[1].geometry.vertices[0]
                 var center = new THREE.Vector3()
                 line3.getCenter(center)
 
-                var c = pointsArray[0].geometry.vertices[0].angleTo(pointsArray[1].geometry.vertices[0])
-                var testAngle = String(THREE.Math.radToDeg(c).toFixed(1)) + "°"
-                this.addText(center.x, center.y, center.z, testAngle)
+                var c = a_pointsArray[0].geometry.vertices[0].angleTo(a_pointsArray[1].geometry.vertices[0])
+                var testAngle = String(THREE.Math.radToDeg(c).toFixed(1)) + '°'
+                var textOBJ = this.addText(center.x, center.y, center.z, testAngle)
+                scene.add(textOBJ)
 
-                var r = pointsArray[0].geometry.vertices[0].distanceTo(new THREE.Vector3(0, 0, 0))
+                var r = a_pointsArray[0].geometry.vertices[0].distanceTo(new THREE.Vector3(0, 0, 0))
                 var ag_center = center.addScalar(r - (center.distanceTo(new THREE.Vector3(0, 0, 0))))
                 var geometry_a = new THREE.Geometry()
-                var curve = new THREE.QuadraticBezierCurve3(pointsArray[0].geometry.vertices[0], ag_center, pointsArray[
+                var curve = new THREE.QuadraticBezierCurve3(a_pointsArray[0].geometry.vertices[0], ag_center, a_pointsArray[
                   1].geometry.vertices[0])
                 var points = curve.getPoints(120)
                 geometry_a.setFromPoints(points)
@@ -651,7 +699,7 @@
                 var line_a = new THREE.Line(geometry_a, material_a)
                 scene.add(line_a)
 
-                pointsArray.splice(0, pointsArray.length)
+                a_pointsArray.splice(0, a_pointsArray.length)
 
                 scene.add(line)
                 CalAngle = false
@@ -701,7 +749,8 @@
             var p3 = areaObjects[i].geometry.vertices[2]
             area += this.AreaOfTriangle(p1, p2, p3)
           }
-          this.addText(midPoint.x, midPoint.y, midPoint.z, area.toFixed(2))
+          var textOBJ = this.addText(midPoint.x, midPoint.y, midPoint.z, area.toFixed(2))
+          scene.add(textOBJ)
           areaObjects.splice(0, areaObjects.length)
           CalArea = false
           mouseDown = false
@@ -921,7 +970,8 @@
         });
         textObj.center = new THREE.Vector2(0, 0)
         textObj.position.set(x, y, z)
-        scene.add(textObj)
+        // scene.add(textObj)
+        return textObj
       },
       /* 创建字体精灵 */
       makeTextSprite(message, parameters) {
@@ -1465,7 +1515,7 @@
         if (scene.getObjectByName('line_move')) {
           scene.remove(scene.getObjectByName('line_move'))
         }
-        pointsArray.splice(0, pointsArray.length)
+        tmp_pointsArray.splice(0, tmp_pointsArray.length)
         CalDistance = false
       },
       getIntersects(event) {
@@ -1524,7 +1574,7 @@
         if (scene.getObjectByName('line_move')) {
           scene.remove(scene.getObjectByName('line_move'))
         }
-        pointsArray.splice(0, pointsArray.length)
+        a_pointsArray.splice(0, a_pointsArray.length)
         CalAngle = false
       },
 
@@ -1747,10 +1797,29 @@
           labelTextBox = []
         }
       },
-
+      
+      checkDistance(){
+        // 查看选定测试距离
+      },
+      deleteDistance(){
+        // 删除选定测试距离
+      },
       delAllDistance(){
         // 删除所有测试距离
-
+        for (var i = 0, l = distanceArray.length; i < l; i++) {
+          // 删除线段
+          scene.remove(distanceArray[i].lineArray.object)
+          // 删除精灵文字
+          scene.remove(distanceArray[i].elvesArray.object)
+          // 删除点
+          if(distanceArray[i].pointsArray.length > 0){
+            for(var j = 0, l = distanceArray.length; j < l; j++){
+              scene.remove(distanceArray[i].pointsArray[j].object)
+            }
+          }
+        }
+        // 清空
+        distanceArray = []
       },
 
       findModel(model, id) {
