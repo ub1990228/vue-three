@@ -145,15 +145,20 @@
   let tagName = 0
   // 计算距离
   let tmp_pointsArray = [] // 记录当前点集
-  let distanceArray = []    // 记录场景测试距离的所有点集、线段、精灵标签
+  let distancePointArray = []    // 记录场景测试距离的所有点集、线段、精灵标签
+  let distanceLineArray = []
+  let distanceSpriteArray = []
+  let distanceArray = []  // 记录当前对象所有UUID
+  let pointName = 0
+  let disName = 0
+  let CalDistance = false
+  // 临时记录，深度拷贝进distanceArray
   let tmp_distanceArray = {
     name:'',
     pointsArray:[],
     lineArray:'',
     elvesArray:''
   }
-  let disName = 0
-  let CalDistance = false
   // 计算角度
   let a_pointsArray = []
   let CalAngle = false
@@ -453,8 +458,8 @@
           /*计算距离 */
           if (CalDistance === true) {
             /* 鼠标左键未点击时线段的移动状态 */
-            if (scene.getObjectByName('line_move')) {
-              scene.remove(scene.getObjectByName('line_move'))
+            if (scene.getObjectByName('line_move_d')) {
+              scene.remove(scene.getObjectByName('line_move_d'))
             }
             /* 创建线段 */
             var lineGeometry = new THREE.Geometry()
@@ -466,7 +471,7 @@
               var mouseVector3 = new THREE.Vector3(intersects[0].point.x, intersects[0].point.y, intersects[0].point.z)
               lineGeometry.vertices.push(mouseVector3)
               var line = new THREE.Line(lineGeometry, lineMaterial)
-              line.name = 'line_move'
+              line.name = 'line_move_d'
               scene.add(line)
             }
             return
@@ -476,8 +481,8 @@
           /*计算角度 */
           if (CalAngle === true) {
             /* 鼠标左键未点击时线段的移动状态 */
-            if (scene.getObjectByName('line_move')) {
-              scene.remove(scene.getObjectByName('line_move'))
+            if (scene.getObjectByName('line_move_a')) {
+              scene.remove(scene.getObjectByName('line_move_a'))
             }
             /* 创建线段 */
             var lineGeometry = new THREE.Geometry()
@@ -489,7 +494,7 @@
               var mouseVector3 = new THREE.Vector3(intersects[0].point.x, intersects[0].point.y, intersects[0].point.z)
               lineGeometry.vertices.push(mouseVector3)
               var line = new THREE.Line(lineGeometry, lineMaterial)
-              line.name = 'line_move'
+              line.name = 'line_move_a'
               scene.add(line)
             }
             return
@@ -578,6 +583,8 @@
           /*计算距离 */
           if (CalDistance === true) {
             if (event.button === 0) {
+              pointName++
+              tmp_distanceArray.name = 'distance_' + disName
               /* 若交点此时在模型之内则创建点(Points) */
               var pointsGeometry = new THREE.Geometry()
               pointsGeometry.vertices.push(intersects[0].point)
@@ -586,8 +593,10 @@
                 size: 1
               })
               var points = new THREE.Points(pointsGeometry, pointsMaterial)
+              points.name = tmp_distanceArray.name + '_point_' + pointName
               tmp_pointsArray.push(points)
-              tmp_distanceArray.pointsArray.push(points)
+              distancePointArray.push(points)
+              tmp_distanceArray.pointsArray.push(points.uuid)
               if (tmp_pointsArray.length >= 2) {
                 /* 创建线段 */
                 var lineGeometry = new THREE.Geometry()
@@ -605,21 +614,22 @@
                   this.toDistance(tmp_pointsArray[0].geometry.vertices[0],
                     tmp_pointsArray[1].geometry.vertices[0]))
                 scene.add(textOBJ)
+                distanceSpriteArray.push(textOBJ)
                 tmp_pointsArray.splice(0, tmp_pointsArray.length)
                 // 求中点
 
                 disName++
-                tmp_distanceArray.name = 'distance_' + disName
-                tmp_distanceArray.elvesArray = textOBJ
-                tmp_distanceArray.lineArray = line
-                console.log(line)
+                textOBJ.name = tmp_distanceArray.name + '_elves'
+                tmp_distanceArray.elvesArray = textOBJ.uuid
+                line.name = tmp_distanceArray.name + '_line'
+                tmp_distanceArray.lineArray = line.uuid
+                distanceLineArray.push(line)
+                scene.add(line)
                 // 对象深拷贝
                 distanceArray.push(JSON.parse(JSON.stringify(tmp_distanceArray)))
-                console.log(distanceArray)
-                scene.add(line)
 
                 /*显示进列表中 */
-                if(distanceArray.length > 0){
+                if(distanceArray.length > 0) {
                   var ui_distance = document.getElementById('distance')
                   var liElement = document.createElement('li')
                   liElement.style.listStyle = 'none'
@@ -644,6 +654,7 @@
                 }
                 /*显示进列表中 */
 
+                pointName = 0
                 CalDistance = false
               }
               scene.add(points)
@@ -1798,35 +1809,41 @@
         }
       },
       
-      checkDistance(){
+      checkDistance() {
         // 查看选定测试距离
       },
-      deleteDistance(){
+      deleteDistance() {
         // 删除选定测试距离
       },
-      delAllDistance(){
+      delAllDistance() {
         // 删除所有测试距离
         for (var i = 0, l = distanceArray.length; i < l; i++) {
-          // 删除线段
-          scene.remove(distanceArray[i].lineArray.object)
-          // 删除精灵文字
-          scene.remove(distanceArray[i].elvesArray.object)
           // 删除点
-          if(distanceArray[i].pointsArray.length > 0){
-            for(var j = 0, l = distanceArray.length; j < l; j++){
-              scene.remove(distanceArray[i].pointsArray[j].object)
+          if (distanceArray[i].pointsArray.length > 0) {
+            for (var j = 0, l = distanceArray[i].pointsArray.length; j < l; j++) {
+              var pID = this.findModel(distancePointArray, distanceArray[i].pointsArray[j])
+              scene.remove(scene.getObjectByName(distancePointArray[pID].name))
             }
           }
+          // 删除线段
+          var lID = this.findModel(distanceLineArray, distanceArray[i].lineArray)
+          scene.remove(scene.getObjectByName(distanceLineArray[lID].name))
+          // 删除精灵文字
+          var eID = this.findModel(distanceSpriteArray, distanceArray[i].elvesArray)
+          scene.remove(scene.getObjectByName(distanceSpriteArray[eID].name))
         }
         // 清空
-        distanceArray = []
+        distanceArray.splice(0, distanceArray.length)
+        distancePointArray.splice(0, distancePointArray.length)
+        distanceLineArray.splice(0, distanceLineArray.length)
+        distanceSpriteArray.splice(0, distanceSpriteArray.length)
       },
 
       findModel(model, id) {
         /*查找模型uuid，并返回下标 */
         if (model.length > 0) {
           for (var i = 0, l = model.length; i < l; i++) {
-            if(model[i].uuid === id){
+            if(model[i].uuid === id) {
               return i
             }
           }
