@@ -598,12 +598,17 @@
               distancePointArray.push(points)
               tmp_distanceArray.pointsArray.push(points.uuid)
               if (tmp_pointsArray.length >= 2) {
+                // 删除临时显示的线
+                if (scene.getObjectByName('line_move_d')) {
+                  scene.remove(scene.getObjectByName('line_move_d'))
+                }
                 /* 创建线段 */
                 var lineGeometry = new THREE.Geometry()
                 var lineMaterial = new THREE.LineBasicMaterial({color: 0xffff00})
                 lineGeometry.vertices.push(tmp_pointsArray[0].geometry.vertices[0], tmp_pointsArray[1].geometry.vertices[0])
                 var line = new THREE.Line(lineGeometry, lineMaterial)
                 // 测量距离并显示
+
                 // 求中点
                 var line_c = new THREE.Line3()
                 line_c.start = tmp_pointsArray[0].geometry.vertices[0]
@@ -1807,17 +1812,83 @@
           }
           labelTextBox = []
         }
+        for (var y = 0, l = labelRecordModelData.length; y < l; y++){
+          // 删除相应的列表显示
+          var parent_label = document.getElementById('label')
+          var son_li = document.getElementById(labelRecordModelData[y].name+'li')
+          parent_label.removeChild(son_li)
+        }
+        labelIDNum = 0
+        tagLabelName = 0
       },
       
       checkDistance() {
         // 查看选定测试距离
+        var buttonID = event.target.id.replace('_v', '')
+        for (var i = 0, l = distanceArray.length; i < l; i++) {
+          if(distanceArray[i].name === buttonID){
+            // 隐藏显示点
+            if (distanceArray[i].pointsArray.length > 0) {
+              for (var j = 0, l = distanceArray[i].pointsArray.length; j < l; j++) {
+                var pID = this.findModel(distancePointArray, distanceArray[i].pointsArray[j])
+                var u_point = scene.getObjectByName(distancePointArray[pID].name)
+                if(u_point.visible === true){
+                  u_point.visible = false
+                } else {
+                  u_point.visible = true
+                }
+              }
+            }
+            // 隐藏显示线段
+            var lID = this.findModel(distanceLineArray, distanceArray[i].lineArray)
+            var u_line = scene.getObjectByName(distanceLineArray[lID].name)
+            if(u_line.visible === true){
+              u_line.visible = false
+            } else {
+              u_line.visible = true
+            }
+            // 隐藏显示精灵文字
+            var eID = this.findModel(distanceSpriteArray, distanceArray[i].elvesArray)
+            var u_sp = scene.getObjectByName(distanceSpriteArray[eID].name)
+            if(u_sp.visible === true){
+              u_sp.visible = false
+            } else {
+              u_sp.visible = true
+            }
+          }
+        }
       },
       deleteDistance() {
         // 删除选定测试距离
+        var buttonID = event.target.id.replace('_d', '')
+        for (var i = 0, l = distanceArray.length; i < l; i++) {
+          if(distanceArray[i].name === buttonID){
+            // 删除对应的list
+            var parent_dis = document.getElementById('distance')
+            var son_li = document.getElementById(buttonID+'li')
+            parent_dis.removeChild(son_li)
+            // 删除点
+            if (distanceArray[i].pointsArray.length > 0) {
+              for (var j = 0, l = distanceArray[i].pointsArray.length; j < l; j++) {
+                var pID = this.findModel(distancePointArray, distanceArray[i].pointsArray[j])
+                scene.remove(scene.getObjectByName(distancePointArray[pID].name))
+              }
+            }
+            // 删除线段
+            var lID = this.findModel(distanceLineArray, distanceArray[i].lineArray)
+            scene.remove(scene.getObjectByName(distanceLineArray[lID].name))
+            // 删除精灵文字
+            var eID = this.findModel(distanceSpriteArray, distanceArray[i].elvesArray)
+            scene.remove(scene.getObjectByName(distanceSpriteArray[eID].name))
+          }
+        }
       },
       delAllDistance() {
-        // 删除所有测试距离
         for (var i = 0, l = distanceArray.length; i < l; i++) {
+          // 删除所有测试距离
+          var parent_dis = document.getElementById('distance')
+          var son_li = document.getElementById(distanceArray[i].name+'li')
+          parent_dis.removeChild(son_li)
           // 删除点
           if (distanceArray[i].pointsArray.length > 0) {
             for (var j = 0, l = distanceArray[i].pointsArray.length; j < l; j++) {
@@ -1827,6 +1898,7 @@
           }
           // 删除线段
           var lID = this.findModel(distanceLineArray, distanceArray[i].lineArray)
+          // console.log(scene.getObjectByName(distanceLineArray[lID].name))
           scene.remove(scene.getObjectByName(distanceLineArray[lID].name))
           // 删除精灵文字
           var eID = this.findModel(distanceSpriteArray, distanceArray[i].elvesArray)
@@ -1837,6 +1909,9 @@
         distancePointArray.splice(0, distancePointArray.length)
         distanceLineArray.splice(0, distanceLineArray.length)
         distanceSpriteArray.splice(0, distanceSpriteArray.length)
+
+        pointName = 0
+        disName = 0
       },
 
       findModel(model, id) {
