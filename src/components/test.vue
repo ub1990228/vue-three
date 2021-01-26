@@ -490,10 +490,25 @@
               color: 0xffff00
             })
             if (a_pointsArray.length < 2) {
-              lineGeometry.vertices.push(a_pointsArray[0].geometry.vertices[0])
-              var mouseVector3 = new THREE.Vector3(intersects[0].point.x, intersects[0].point.y, intersects[0].point.z)
-              lineGeometry.vertices.push(mouseVector3)
-              var line = new THREE.Line(lineGeometry, lineMaterial)
+              // 求中点
+              var line3 = new THREE.Line3()
+              line3.start = a_pointsArray[0].geometry.vertices[0]
+              line3.end = intersects[0].point
+              var center = new THREE.Vector3()
+              line3.getCenter(center)
+              // 画弧线
+              var r = a_pointsArray[0].geometry.vertices[0].distanceTo(new THREE.Vector3(0, 0, 0))
+              var ag_center = center.addScalar(r - (center.distanceTo(new THREE.Vector3(0, 0, 0))))
+              var geometry_a = new THREE.Geometry()
+              var curve = new THREE.QuadraticBezierCurve3(
+                a_pointsArray[0].geometry.vertices[0], 
+                ag_center, intersects[0].point)
+              var points = curve.getPoints(120)
+              geometry_a.setFromPoints(points)
+              var material_a = new THREE.LineBasicMaterial({
+                color: 0xff0000
+              })
+              var line = new THREE.Line(geometry_a, material_a)
               line.name = 'line_move_a'
               scene.add(line)
             }
@@ -681,14 +696,11 @@
               })
               var points = new THREE.Points(pointsGeometry, pointsMaterial)
               a_pointsArray.push(points)
-              /* 创建线段 */
-              var lineGeometry = new THREE.Geometry();
-              var lineMaterial = new THREE.LineBasicMaterial({
-                color: 0xffff00
-              })
               if (a_pointsArray.length >= 2) {
-                lineGeometry.vertices.push(a_pointsArray[0].geometry.vertices[0], a_pointsArray[1].geometry.vertices[0])
-                var line = new THREE.Line(lineGeometry, lineMaterial)
+                // 删除多余弧线
+                if (scene.getObjectByName('line_move_a')) {
+                  scene.remove(scene.getObjectByName('line_move_a'))
+                }
                 // 测量角度
                 // 求中点
                 var line3 = new THREE.Line3()
@@ -696,17 +708,15 @@
                 line3.end = a_pointsArray[1].geometry.vertices[0]
                 var center = new THREE.Vector3()
                 line3.getCenter(center)
-
+                // 求角度
                 var c = a_pointsArray[0].geometry.vertices[0].angleTo(a_pointsArray[1].geometry.vertices[0])
-                var testAngle = String(THREE.Math.radToDeg(c).toFixed(1)) + '°'
-                var textOBJ = this.addText(center.x, center.y, center.z, testAngle)
-                scene.add(textOBJ)
-
+                // 画弧线
                 var r = a_pointsArray[0].geometry.vertices[0].distanceTo(new THREE.Vector3(0, 0, 0))
                 var ag_center = center.addScalar(r - (center.distanceTo(new THREE.Vector3(0, 0, 0))))
                 var geometry_a = new THREE.Geometry()
-                var curve = new THREE.QuadraticBezierCurve3(a_pointsArray[0].geometry.vertices[0], ag_center, a_pointsArray[
-                  1].geometry.vertices[0])
+                var curve = new THREE.QuadraticBezierCurve3(
+                  a_pointsArray[0].geometry.vertices[0], 
+                  ag_center, a_pointsArray[1].geometry.vertices[0])
                 var points = curve.getPoints(120)
                 geometry_a.setFromPoints(points)
                 var material_a = new THREE.LineBasicMaterial({
@@ -715,9 +725,13 @@
                 var line_a = new THREE.Line(geometry_a, material_a)
                 scene.add(line_a)
 
-                a_pointsArray.splice(0, a_pointsArray.length)
+                // 添加精灵标签
+                var center_point = parseInt(points.length / 2)
+                var testAngle = String(THREE.Math.radToDeg(c).toFixed(1)) + '°'
+                var textOBJ = this.addText(points[center_point].x, points[center_point].y, points[center_point].z, testAngle)
+                scene.add(textOBJ)
 
-                scene.add(line)
+                a_pointsArray.splice(0, a_pointsArray.length)
                 CalAngle = false
               }
               scene.add(points)
@@ -1898,7 +1912,6 @@
           }
           // 删除线段
           var lID = this.findModel(distanceLineArray, distanceArray[i].lineArray)
-          // console.log(scene.getObjectByName(distanceLineArray[lID].name))
           scene.remove(scene.getObjectByName(distanceLineArray[lID].name))
           // 删除精灵文字
           var eID = this.findModel(distanceSpriteArray, distanceArray[i].elvesArray)
@@ -1912,6 +1925,16 @@
 
         pointName = 0
         disName = 0
+      },
+      
+      checkAngle() {
+        // 查看选定测试角度
+      },
+      deleteAngle() {
+        // 删除选定测试角度
+      },
+      delAllAngle() {
+        // 删除所有测试角度
       },
 
       findModel(model, id) {
