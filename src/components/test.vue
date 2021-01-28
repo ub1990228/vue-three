@@ -44,6 +44,8 @@
       <button @click="delMark">删除所有标注</button>
       <button @click="delAllLabel">删除所有标签</button>
       <button @click="delAllDistance">删除所有距离</button>
+      <button @click="delAllAngle">删除所有角度</button>
+      <button @click="delAllArea">删除所有表面积</button>
       <button @click="saveimage">获取快照</button>
       <button @click="exportSTL">保存模型到本地</button>
       <a href="" id="downlink" style="display: none;"></a>
@@ -152,7 +154,7 @@
   let pointName = 0
   let disName = 0
   let CalDistance = false
-  // 临时记录，深度拷贝进distanceArray
+  // 临时记录uuid，深度拷贝进distanceArray
   let tmp_distanceArray = {
     name:'',
     pointsArray:[],
@@ -161,10 +163,33 @@
   }
   // 计算角度
   let a_pointsArray = []
+  let AnglePointArray = []    // 记录场景测试距离的所有点集、线段、精灵标签
+  let AngleLineArray = []
+  let AngleSpriteArray = []
+  let AngleArray = []  // 记录当前对象所有UUID
   let CalAngle = false
+  let aPointName = 0
+  let angleName = 0
+  // 临时记录uuid，深度拷贝进distanceArray
+  let tmp_angleArray = {
+    name:'',
+    pointsArray:[],
+    lineArray:'',
+    elvesArray:''
+  }
   // 计算表面积
   let CalArea = false
   let areaObjects = []
+  let areaObjectsArray = []  // 记录所有的三角面片和精灵标签
+  let areaSpriteArray = []
+  let areaObjectArray = []  // 记录所有uuid
+  let tmp_areaObjectuuid = {
+    name: '',
+    faceArray: [],
+    elves: ''
+  }
+  let areaName = 0
+  let faceName = 0
   // 添加标签
   let AddLabel = false
   let AddLabelLine = false
@@ -442,10 +467,10 @@
           if (AddLabel === true) {
             var intersect = intersects[0]
             brushMesh.position.copy(intersect.point)
-            if (mouseDown && mouseRightDown && intersect.object !== modelMesh &&
-              areaObjects.indexOf(intersect.object) > -1) {
+            if (mouseDown && mouseRightDown && intersect.object !== modelMesh) {
+              // &&areaObjects.indexOf(intersect.object) > -1
               scene.remove(intersect.object)
-              areaObjects.splice(areaObjects.indexOf(intersect.object), 1)
+              // areaObjects.splice(areaObjects.indexOf(intersect.object), 1)
             } else if (mouseDown && !mouseRightDown && intersect.object === modelMesh &&
               prePoint != null &&
               this.pointDistanceThan(prePoint, intersect.point, this.getBrushSize() * 0.2)) {
@@ -518,6 +543,7 @@
 
           /*计算表面积 */
           if (CalArea === true && mouseDown) {
+            faceName++
             var intersect_a = intersects[0]
             let face = intersect_a.face
             //显示三角面
@@ -535,6 +561,9 @@
             faceGeometry.computeFaceNormals()
             faceGeometry.computeVertexNormals()
             let faceMesh = new THREE.Mesh(faceGeometry, triangle_material)
+            faceMesh.name = 'face_' + faceName
+            areaObjectsArray.push(faceMesh)
+            tmp_areaObjectuuid.faceArray.push(faceMesh.uuid)
             this.setPaint(faceMesh)
             scene.add(faceMesh)
             return
@@ -639,9 +668,9 @@
                 // 求中点
 
                 disName++
-                textOBJ.name = tmp_distanceArray.name + '_elves'
+                textOBJ.name = tmp_distanceArray.name + '_elves_' + disName
                 tmp_distanceArray.elvesArray = textOBJ.uuid
-                line.name = tmp_distanceArray.name + '_line'
+                line.name = tmp_distanceArray.name + '_line_' + disName
                 tmp_distanceArray.lineArray = line.uuid
                 distanceLineArray.push(line)
                 scene.add(line)
@@ -687,6 +716,8 @@
           /*计算角度 */
           if (CalAngle === true) {
             if (event.button === 0) {
+              aPointName++
+              tmp_angleArray.name = 'angle_' + angleName
               /* 若交点此时在模型之内则创建点(Points) */
               var pointsGeometry = new THREE.Geometry()
               pointsGeometry.vertices.push(intersects[0].point)
@@ -695,12 +726,16 @@
                 size: 1
               })
               var points = new THREE.Points(pointsGeometry, pointsMaterial)
+              points.name = tmp_angleArray.name + '_point_' + aPointName
               a_pointsArray.push(points)
+              AnglePointArray.push(points)
+              tmp_angleArray.pointsArray.push(points.uuid)
               if (a_pointsArray.length >= 2) {
                 // 删除多余弧线
                 if (scene.getObjectByName('line_move_a')) {
                   scene.remove(scene.getObjectByName('line_move_a'))
                 }
+                angleName++
                 // 测量角度
                 // 求中点
                 var line3 = new THREE.Line3()
@@ -715,23 +750,59 @@
                 var ag_center = center.addScalar(r - (center.distanceTo(new THREE.Vector3(0, 0, 0))))
                 var geometry_a = new THREE.Geometry()
                 var curve = new THREE.QuadraticBezierCurve3(
-                  a_pointsArray[0].geometry.vertices[0], 
+                  a_pointsArray[0].geometry.vertices[0],
                   ag_center, a_pointsArray[1].geometry.vertices[0])
-                var points = curve.getPoints(120)
-                geometry_a.setFromPoints(points)
+                var c_points = curve.getPoints(120)
+                geometry_a.setFromPoints(c_points)
                 var material_a = new THREE.LineBasicMaterial({
                   color: 0xff0000
                 })
                 var line_a = new THREE.Line(geometry_a, material_a)
+                AngleLineArray.push(line_a)
+                line_a.name = tmp_angleArray.name + '_line_' + angleName
                 scene.add(line_a)
 
                 // 添加精灵标签
-                var center_point = parseInt(points.length / 2)
+                var center_point = parseInt(c_points.length / 2)
                 var testAngle = String(THREE.Math.radToDeg(c).toFixed(1)) + '°'
-                var textOBJ = this.addText(points[center_point].x, points[center_point].y, points[center_point].z, testAngle)
+                var textOBJ = this.addText(c_points[center_point].x, c_points[center_point].y, c_points[center_point].z, testAngle)
+                textOBJ.name = tmp_angleArray.name + '_elves_' + angleName
                 scene.add(textOBJ)
+                AngleSpriteArray.push(textOBJ)
 
+                tmp_angleArray.lineArray = line_a.uuid
+                tmp_angleArray.elvesArray = textOBJ.uuid
+                // 对象深拷贝
+                AngleArray.push(JSON.parse(JSON.stringify(tmp_angleArray)))
                 a_pointsArray.splice(0, a_pointsArray.length)
+
+                /*显示进列表 */
+                if(AngleArray.length > 0){
+                  var ui_angle = document.getElementById('angle')
+                  var liElement = document.createElement('li')
+                  liElement.style.listStyle = 'none'
+                  liElement.id = tmp_angleArray.name + 'li'
+
+                  var buttonViewElement = document.createElement('input')
+                  buttonViewElement.type = 'button'
+                  buttonViewElement.id = tmp_angleArray.name + '_v'
+                  buttonViewElement.value = tmp_angleArray.name
+                  buttonViewElement.addEventListener('mousedown', this.checkAngle, false)
+
+                  var buttonDelElement = document.createElement('input')
+                  buttonDelElement.type = 'button'
+                  buttonDelElement.id = tmp_angleArray.name + '_d'
+                  buttonDelElement.value = '删除'
+                  buttonDelElement.addEventListener('mousedown', this.deleteAngle, false)
+
+                  liElement.appendChild(buttonViewElement)
+                  liElement.appendChild(buttonDelElement)
+                  ui_angle.appendChild(liElement)
+                  tmp_angleArray.pointsArray.splice(0,tmp_angleArray.pointsArray.length)
+                }
+                /*显示进列表 */
+
+                aPointName = 0
                 CalAngle = false
               }
               scene.add(points)
@@ -766,6 +837,9 @@
       onDocumentMouseUp(event) {
         /*计算表面积 */
         if (CalArea === true) {
+          areaName++
+          faceName++
+          tmp_areaObjectuuid.name = 'area_' + areaName
           var area = 0.0
           var mid = parseInt(areaObjects.length / 2)
           var midPoint = null
@@ -780,7 +854,40 @@
             area += this.AreaOfTriangle(p1, p2, p3)
           }
           var textOBJ = this.addText(midPoint.x, midPoint.y, midPoint.z, area.toFixed(2))
+          textOBJ.name = tmp_areaObjectuuid.name + '_elves_' + faceName
           scene.add(textOBJ)
+          areaSpriteArray.push(textOBJ)
+          tmp_areaObjectuuid.elves = textOBJ.uuid
+          // 对象深拷贝
+          areaObjectArray.push(JSON.parse(JSON.stringify(tmp_areaObjectuuid)))
+
+          /*显示进列表 */
+          if(areaObjectArray.length > 0) {
+            var ui_area = document.getElementById('area')
+            var liElement = document.createElement('li')
+            liElement.style.listStyle = 'none'
+            liElement.id = tmp_areaObjectuuid.name + 'li'
+
+            var buttonViewElement = document.createElement('input')
+            buttonViewElement.type = 'button'
+            buttonViewElement.id = tmp_areaObjectuuid.name + '_v'
+            buttonViewElement.value = tmp_areaObjectuuid.name
+            buttonViewElement.addEventListener('mousedown', this.checkArea, false)
+
+            var buttonDelElement = document.createElement('input')
+            buttonDelElement.type = 'button'
+            buttonDelElement.id = tmp_areaObjectuuid.name + '_d'
+            buttonDelElement.value = '删除'
+            buttonDelElement.addEventListener('mousedown', this.deleteArea, false)
+
+            liElement.appendChild(buttonViewElement)
+            liElement.appendChild(buttonDelElement)
+            ui_area.appendChild(liElement)
+          }
+          /*显示进列表 */
+          
+          // 清空临时数据
+          tmp_areaObjectuuid.faceArray.splice(0, tmp_areaObjectuuid.faceArray.length)
           areaObjects.splice(0, areaObjects.length)
           CalArea = false
           mouseDown = false
@@ -1626,7 +1733,7 @@
         CalArea = true
       },
       noSurfaceArea() {
-        areaObjects.splice(0, areaObjects.length)
+        // areaObjects.splice(0, areaObjects.length)
         CalArea = false
       },
       AreaOfTriangle(p1, p2, p3) {
@@ -1899,7 +2006,7 @@
       },
       delAllDistance() {
         for (var i = 0, l = distanceArray.length; i < l; i++) {
-          // 删除所有测试距离
+          // 删除列表显示
           var parent_dis = document.getElementById('distance')
           var son_li = document.getElementById(distanceArray[i].name+'li')
           parent_dis.removeChild(son_li)
@@ -1929,12 +2036,126 @@
       
       checkAngle() {
         // 查看选定测试角度
+        var buttonID = event.target.id.replace('_v', '')
+        for (var i = 0, l = AngleArray.length; i < l; i++) {
+          if(AngleArray[i].name === buttonID){
+            // 隐藏显示点
+            if (AngleArray[i].pointsArray.length > 0) {
+              for (var j = 0, l = AngleArray[i].pointsArray.length; j < l; j++) {
+                var pID = this.findModel(AnglePointArray, AngleArray[i].pointsArray[j])
+                var u_point = scene.getObjectByName(AnglePointArray[pID].name)
+                if(u_point.visible === true){
+                  u_point.visible = false
+                } else {
+                  u_point.visible = true
+                }
+              }
+            }
+            // 隐藏显示线段
+            var lID = this.findModel(AngleLineArray, AngleArray[i].lineArray)
+            var u_line = scene.getObjectByName(AngleLineArray[lID].name)
+            if(u_line.visible === true){
+              u_line.visible = false
+            } else {
+              u_line.visible = true
+            }
+            // 隐藏显示精灵文字
+            var eID = this.findModel(AngleSpriteArray, AngleArray[i].elvesArray)
+            var u_sp = scene.getObjectByName(AngleSpriteArray[eID].name)
+            if(u_sp.visible === true){
+              u_sp.visible = false
+            } else {
+              u_sp.visible = true
+            }
+          }
+        }
       },
       deleteAngle() {
         // 删除选定测试角度
+        var buttonID = event.target.id.replace('_d', '')
+        for (var i = 0, l = AngleArray.length; i < l; i++) {
+          if(AngleArray[i].name === buttonID){
+            // 删除对应的list
+            var parent_dis = document.getElementById('angle')
+            var son_li = document.getElementById(buttonID+'li')
+            parent_dis.removeChild(son_li)
+            // 删除点
+            if (AngleArray[i].pointsArray.length > 0) {
+              for (var j = 0, l = AngleArray[i].pointsArray.length; j < l; j++) {
+                var pID = this.findModel(AnglePointArray, AngleArray[i].pointsArray[j])
+                scene.remove(scene.getObjectByName(AnglePointArray[pID].name))
+              }
+            }
+            // 删除线段
+            var lID = this.findModel(AngleLineArray, AngleArray[i].lineArray)
+            scene.remove(scene.getObjectByName(AngleLineArray[lID].name))
+            // 删除精灵文字
+            var eID = this.findModel(AngleSpriteArray, AngleArray[i].elvesArray)
+            scene.remove(scene.getObjectByName(AngleSpriteArray[eID].name))
+          }
+        }
       },
       delAllAngle() {
         // 删除所有测试角度
+        for (var i = 0, l = AngleArray.length; i < l; i++) {
+          // 删除列表显示
+          var parent_dis = document.getElementById('angle')
+          var son_li = document.getElementById(AngleArray[i].name+'li')
+          parent_dis.removeChild(son_li)
+          // 删除点
+          if (AngleArray[i].pointsArray.length > 0) {
+            for (var j = 0, l = AngleArray[i].pointsArray.length; j < l; j++) {
+              var pID = this.findModel(AnglePointArray, AngleArray[i].pointsArray[j])
+              scene.remove(scene.getObjectByName(AnglePointArray[pID].name))
+            }
+          }
+          // 删除线段
+          var lID = this.findModel(AngleLineArray, AngleArray[i].lineArray)
+          scene.remove(scene.getObjectByName(AngleLineArray[lID].name))
+          // 删除精灵文字
+          var eID = this.findModel(AngleSpriteArray, AngleArray[i].elvesArray)
+          scene.remove(scene.getObjectByName(AngleSpriteArray[eID].name))
+        }
+        // 清空
+        AngleArray.splice(0, distanceArray.length)
+        AnglePointArray.splice(0, distancePointArray.length)
+        AngleLineArray.splice(0, distanceLineArray.length)
+        AngleSpriteArray.splice(0, distanceSpriteArray.length)
+        aPointName = 0
+        angleName = 0
+      },
+
+      checkArea(){
+
+      },
+      deleteArea(){
+
+      },
+      delAllArea(){
+        // 删除所有测试表面积
+        for (var i = 0, l = areaObjectArray.length; i < l; i++){
+          // 删除列表显示
+          var parent_area = document.getElementById('area')
+          var son_li = document.getElementById(areaObjectArray[i].name+'li')
+          parent_area.removeChild(son_li)
+          // 删除三角片
+          if (areaObjectArray[i].faceArray.length > 0) {
+            for (var j = 0, l = areaObjectArray[i].faceArray.length; j < l; j++) {
+              var aID = this.findModel(areaObjectsArray, areaObjectArray[i].faceArray[j])
+              scene.remove(scene.getObjectByName(areaObjectsArray[aID].name))
+            }
+          }
+          // 删除精灵文字
+          var eID = this.findModel(areaSpriteArray, areaObjectArray[i].elves)
+          scene.remove(scene.getObjectByName(areaSpriteArray[eID].name))
+        }
+
+        // 清空
+        areaObjectsArray.splice(0, areaObjectsArray.length)
+        areaSpriteArray.splice(0, areaSpriteArray.length)
+        areaObjectArray.splice(0, areaObjectArray.length)
+        areaName = 0
+        faceName = 0
       },
 
       findModel(model, id) {
