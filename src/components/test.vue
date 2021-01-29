@@ -2126,10 +2126,55 @@
       },
 
       checkArea(){
-
+        // 查看选定测试表面积
+        var buttonID = event.target.id.replace('_v', '')
+        for (var i = 0, l = areaObjectArray.length; i < l; i++){
+          if(areaObjectArray[i].name === buttonID){
+            // 查看对应的三角片
+            if (areaObjectArray[i].faceArray.length > 0) {
+              for (var j = 0, l = areaObjectArray[i].faceArray.length; j < l; j++) {
+                var aID = this.findModel(areaObjectsArray, areaObjectArray[i].faceArray[j])
+                var u_area = scene.getObjectByName(areaObjectsArray[aID].name)
+                if(u_area.visible === true){
+                  u_area.visible = false
+                } else {
+                  u_area.visible = true
+                }
+              }
+            }
+            // 查看对应精灵文字
+            var eID = this.findModel(areaSpriteArray, areaObjectArray[i].elves)
+            var u_sp = scene.getObjectByName(areaSpriteArray[eID].name)
+            if(u_sp.visible === true){
+              u_sp.visible = false
+            } else {
+              u_sp.visible = true
+            }
+          }
+        }
       },
       deleteArea(){
+        // 删除选定测试表面积
+        var buttonID = event.target.id.replace('_d', '')
+        for (var i = 0, l = areaObjectArray.length; i < l; i++){
+          if(areaObjectArray[i].name === buttonID){
+            // 删除对应的list
+            var parent_area = document.getElementById('area')
+            var son_li = document.getElementById(buttonID+'li')
+            parent_area.removeChild(son_li)
 
+            // 删除对应的三角片
+            if (areaObjectArray[i].faceArray.length > 0) {
+              for (var j = 0, l = areaObjectArray[i].faceArray.length; j < l; j++) {
+                var aID = this.findModel(areaObjectsArray, areaObjectArray[i].faceArray[j])
+                scene.remove(scene.getObjectByName(areaObjectsArray[aID].name))
+              }
+            }
+            // 删除对应精灵文字
+            var eID = this.findModel(areaSpriteArray, areaObjectArray[i].elves)
+            scene.remove(scene.getObjectByName(areaSpriteArray[eID].name))
+          }
+        }
       },
       delAllArea(){
         // 删除所有测试表面积
