@@ -1943,7 +1943,7 @@
         tagLabelName = 0
       },
       
-      checkDistance() {
+      checkDistance(event) {
         // 查看选定测试距离
         var buttonID = event.target.id.replace('_v', '')
         for (var i = 0, l = distanceArray.length; i < l; i++) {
@@ -1979,7 +1979,7 @@
           }
         }
       },
-      deleteDistance() {
+      deleteDistance(event) {
         // 删除选定测试距离
         var buttonID = event.target.id.replace('_d', '')
         for (var i = 0, l = distanceArray.length; i < l; i++) {
@@ -2034,7 +2034,7 @@
         disName = 0
       },
       
-      checkAngle() {
+      checkAngle(event) {
         // 查看选定测试角度
         var buttonID = event.target.id.replace('_v', '')
         for (var i = 0, l = AngleArray.length; i < l; i++) {
@@ -2070,7 +2070,7 @@
           }
         }
       },
-      deleteAngle() {
+      deleteAngle(event) {
         // 删除选定测试角度
         var buttonID = event.target.id.replace('_d', '')
         for (var i = 0, l = AngleArray.length; i < l; i++) {
@@ -2125,7 +2125,7 @@
         angleName = 0
       },
 
-      checkArea(){
+      checkArea(event){
         // 查看选定测试表面积
         var buttonID = event.target.id.replace('_v', '')
         for (var i = 0, l = areaObjectArray.length; i < l; i++){
@@ -2153,7 +2153,7 @@
           }
         }
       },
-      deleteArea(){
+      deleteArea(event){
         // 删除选定测试表面积
         var buttonID = event.target.id.replace('_d', '')
         for (var i = 0, l = areaObjectArray.length; i < l; i++){
