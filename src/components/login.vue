@@ -19,9 +19,17 @@ export default {
   },
   methods:{
     login () {
-      if(this.loginform.name === 'admin' && this.loginform.password === '123456') {
-        this.$router.push('/test')
-      }
+      this.$axios({
+        method: 'get',
+        url: '/api/login',
+        params: this.loginform
+      }).then(result => {
+        if (result.data.status == 1) {
+          this.$router.push({path:'/test'})
+        }
+      }).catch(error => {
+        console.log(error)
+      });
     }
   }
 }
