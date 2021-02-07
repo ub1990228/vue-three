@@ -13,7 +13,7 @@
       <input id="text_tag" type="text" @keyup.enter="enterUP">
     </div> -->
     <div>
-      <input id="fileSTL" type="file" name="file" @input="importMODEL" />
+      <input id="fileSTL" type="file" name="file" @input="importMODEL($event)" />
       <button @click="autorotate">自动旋转</button>
       <button @click="stopautorotate">停止自动旋转</button>
       <button @click="showPointModel">对象/点模型切换</button>
@@ -1523,20 +1523,39 @@
         this.clearMarks()
       },
 
-      importMODEL() {
+      importMODEL(event) {
 
         /*初始化 */
         labelIDNum = 0
         tagName = 0
         /*初始化 */
 
-        const fileName = document.getElementById('fileSTL')
-        const fileType = fileName.value.substr(fileName.value.lastIndexOf('.') + 1)
+        let file = event.target.files
+
+        let fileType = file[0].name.substr(file[0].name.lastIndexOf('.') + 1)
         if (fileType !== 'stl' && fileType !== 'obj') {
           alert('不支持此类型')
           return
         }
-        this.loadModel('../static/' + fileName.value.split('\\')[fileName.value.split('\\').length - 1], fileType)
+
+        let formData = new FormData()
+        formData.append('File', file[0])
+        this.$axios({
+          method: 'post',
+          url: '/api/upload',
+          data: formData,
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        }).then(result => {
+          if(result.data.status === 1){
+            this.loadModel('http:127.0.0.1:18888' + result.data.path, fileType)
+          }
+        }).catch(error => {
+          console.log(error)
+        })
+
+        // this.loadModel('../static/' + fileName.value.split('\\')[fileName.value.split('\\').length - 1], fileType)
         // this.loadModel(fileName.value, fileType)
       },
 
