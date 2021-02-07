@@ -1,6 +1,12 @@
 <template>
   <div id="page">
-    <div style="position: fixed; left:200px; top:30px;height:240px;width:240px;box-shadow:0px 0px 10px #000;display:none;">
+
+    <div id="overlay" class="overlay" style="text-align:center;line-height:935px;display:none;">
+      <progress id="pg" value='0' max='100'></progress>
+      <label>{{ user_pg }}</label>
+    </div>
+
+    <div style="position: fixed; left:200px; top:700px;height:240px;width:240px;box-shadow:0px 0px 10px #000;">
       <img :src="snapshot" />
     </div>
     <!-- <div class="tag" id="tag">
@@ -208,6 +214,7 @@
     name: 'vue-three',
     data() {
       return {
+        user_pg: '',
         enableMark: true,
         autoRotate: true,
         brushColor: '#EA1A1A',
@@ -1401,7 +1408,19 @@
         if (type === 'obj') {
           loader = new OBJLoader()
         }
-        loader.load(filepath, this.onModelLoaded, this.onLoadModelError)
+        loader.load(filepath, this.onModelLoaded, this.onProgress, this.onLoadModelError)
+      },
+
+      onProgress(xhr) {
+        var pg = document.getElementById('pg')
+        var lay = document.getElementById('overlay')
+        lay.style.display = 'block' 
+        var pg_value = xhr.loaded/xhr.total*100
+        pg.value = parseInt(pg_value)
+        this.user_pg = parseInt(pg_value) + '%'
+        if(pg_value === 100){
+          lay.style.display = 'none'
+        }
       },
 
       setMarkObjectsShow(isShow) {
@@ -2297,4 +2316,17 @@
   .tap {
     position: absolute;
   }
+
+  .overlay {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    z-index: 10001;
+    filter:alpha(opacity=60);
+    background-color: #777;
+    opacity: 0.5;
+    -moz-opacity: 0.5;
+    height: 936px;
+    width: 1920px;
+}
 </style>
