@@ -230,7 +230,8 @@
         r_section: 0,
         sectionSizeMin: 0,
         sectionSizeMax: 100,
-        sectionSizeStep: 1
+        sectionSizeStep: 1,
+        modelPath:''
       }
     },
     methods: {
@@ -1348,6 +1349,7 @@
       },
       onModelLoaded(result) {
         var geo = this.getMergedGeometry(result)
+        console.log(geo)
         if (!geo) {
           return
         }
@@ -1395,9 +1397,6 @@
         }
         controls.initPosition()
       },
-      onLoadModelError(errObj) {
-        console.error(errObj)
-      },
       //外部模型加载函数
       loadModel(filepath, type) {
         //包含材质
@@ -1410,7 +1409,9 @@
         }
         loader.load(filepath, this.onModelLoaded, this.onProgress, this.onLoadModelError)
       },
-
+      onLoadModelError(errObj) {
+        console.error(errObj)
+      },
       onProgress(xhr) {
         var pg = document.getElementById('pg')
         var lay = document.getElementById('overlay')
@@ -1548,15 +1549,16 @@
             'Content-Type': 'multipart/form-data'
           }
         }).then(result => {
-          if(result.data.status === 1){
-            this.loadModel('http:127.0.0.1:18888' + result.data.path, fileType)
+          if(result.data.status === 1) {
+            this.modelPath = this.$model + result.data.path
+            this.loadModel(this.modelPath, fileType)
           }
         }).catch(error => {
           console.log(error)
         })
 
-        // this.loadModel('../static/' + fileName.value.split('\\')[fileName.value.split('\\').length - 1], fileType)
-        // this.loadModel(fileName.value, fileType)
+        // this.loadModel('../model/' + file[0].name.split('\\')[file[0].name.split('\\').length - 1], fileType)
+        // this.loadModel(this.$model + '/static/model/fat.stl', 'stl')
       },
 
       seleteVal() {
