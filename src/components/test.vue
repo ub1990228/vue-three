@@ -12,7 +12,20 @@
     <!-- <div class="tag" id="tag">
       <input id="text_tag" type="text" @keyup.enter="enterUP">
     </div> -->
+    <div id="window">
+      服务器存储模型列表<button @click="closeIt" style="margin-left:80%">关闭</button><br>
+      <div>
+        <table>
+          <tr>
+            <td>name</td>
+            <td><button>查看</button></td>
+            <td><button>删除</button></td>
+          </tr>
+        </table>
+      </div>
+    </div>
     <div>
+      <button @click="doIt">服务器模型列表</button>
       <input id="fileSTL" type="file" name="file" @input="importMODEL($event)" />
       <button @click="autorotate">自动旋转</button>
       <button @click="stopautorotate">停止自动旋转</button>
@@ -2254,9 +2267,14 @@
           return -1
         }
         return -1
-      }
+      },
         
-
+      doIt(){
+        document.getElementById('window').style.display='block'
+      },
+      closeIt(){
+        document.getElementById('window').style.display='none'
+      }
     },
     mounted() {
       this.init()
@@ -2349,5 +2367,18 @@
     -moz-opacity: 0.5;
     height: 936px;
     width: 1920px;
-}
+  }
+
+  #window{
+    border:8px solid #CCCCCC;
+    position:absolute;
+    width:50%;
+    height:50%;    
+    left:25%;
+    top:25%;
+    background-color:#FFFFFF;
+    z-index:1002;
+    overflow:auto;
+    display:none;
+  }
 </style>
