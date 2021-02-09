@@ -15,11 +15,11 @@
     <div id="window">
       服务器存储模型列表<button @click="closeIt" style="margin-left:80%">关闭</button><br>
       <div>
-        <table>
-          <tr>
-            <td>name</td>
-            <td><button>查看</button></td>
-            <td><button>删除</button></td>
+        <table id="modelTable">
+          <tr :id="model" v-for="(model,index) in modelList" :key="index">
+            <td>{{ model }}</td>
+            <td><button :name="index" @click="checkServerModel($event)">查看</button></td>
+            <td><button :name="index" @click="deleteServerModel($event)">删除</button></td>
           </tr>
         </table>
       </div>
@@ -244,7 +244,8 @@
         sectionSizeMin: 0,
         sectionSizeMax: 100,
         sectionSizeStep: 1,
-        modelPath:''
+        modelPath:'',
+        modelList: []
       }
     },
     methods: {
@@ -2271,9 +2272,45 @@
         
       doIt(){
         document.getElementById('window').style.display='block'
+        this.$axios({
+          method: 'get',
+          url: '/api/models'
+        }).then(result => {
+          if(result.data.status === 1) {
+            this.modelList = result.data.data
+          }
+        }).catch(error => {
+          console.log(error)
+        })
       },
       closeIt(){
         document.getElementById('window').style.display='none'
+      },
+      checkServerModel(event){
+        var button = event.target.name
+        console.log(button)
+      },
+      deleteServerModel(event){
+        var button = event.target.name
+        var model_name = this.modelList[button]
+
+        var parent_table = document.getElementById('modelTable')
+        var son_tr = document.getElementById(model_name)
+        parent_table.removeChild(son_tr)
+
+        this.$axios({
+          method: 'delete',
+          url: '/api/models',
+          params: {
+            'name': model_name
+          }
+        }).then(result => {
+          if(result.data.status === 1) {
+            console.log(result.data.status)
+          }
+        }).catch(error => {
+          console.log(error)
+        })
       }
     },
     mounted() {
