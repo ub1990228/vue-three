@@ -1559,7 +1559,8 @@
         }).then(result => {
           if(result.data.status === 1) {
             this.modelPath = this.$model + result.data.path
-            this.loadModel(this.modelPath, fileType)
+            console.log(this.modelPath + ' ' + '上传成功')
+            // this.loadModel(this.modelPath, fileType)
           }
         }).catch(error => {
           console.log(error)
@@ -2309,8 +2310,11 @@
         document.getElementById('window').style.display='none'
       },
       checkServerModel(event){
-        // var button = event.target.name
-        // console.log(button)
+        this.closeIt()
+        var button = event.target.name
+        var model_name = this.modelList[button]
+        let fileType = model_name.substr(model_name.lastIndexOf('.') + 1)
+        this.loadModel(`${this.$model}/static/model/${model_name}`, fileType)
       },
       deleteServerModel(event){
         var button = event.target.name
