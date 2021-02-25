@@ -16,11 +16,11 @@
       服务器存储模型列表<button @click="closeIt" style="margin-left:80%">关闭</button><br>
       <div>
         <table id="modelTable">
-          <tr :id="model" v-for="(model,index) in modelList" :key="index">
+          <!-- <tr :id="model" v-for="(model,index) in modelList" :key="index">
             <td>{{ model }}</td>
             <td><button :name="index" @click="checkServerModel($event)">查看</button></td>
             <td><button :name="index" @click="deleteServerModel($event)">删除</button></td>
-          </tr>
+          </tr> -->
         </table>
       </div>
     </div>
@@ -2278,39 +2278,64 @@
         }).then(result => {
           if(result.data.status === 1) {
             this.modelList = result.data.data
+            var tableElement = document.getElementById('modelTable')
+            for (var i = 0, l = this.modelList.length; i < l; i++) {
+              var trElement = document.createElement('tr')
+              trElement.id = this.modelList[i]
+              var tdElement_name = document.createElement('td')
+              tdElement_name.innerHTML = this.modelList[i]
+              var tdElement_cButton = document.createElement('button')
+              tdElement_cButton.name = i
+              tdElement_cButton.innerHTML = '查看'
+              tdElement_cButton.addEventListener('mousedown', this.checkServerModel, false)
+              var tdElement_dButton = document.createElement('button')
+              tdElement_dButton.name = i
+              tdElement_dButton.innerHTML = '删除'
+              tdElement_dButton.addEventListener('mousedown', this.deleteServerModel, false)
+              trElement.appendChild(tdElement_name)
+              trElement.appendChild(tdElement_cButton)
+              trElement.appendChild(tdElement_dButton)
+              tableElement.appendChild(trElement)
+            }
           }
         }).catch(error => {
           console.log(error)
         })
       },
       closeIt(){
+        var tableElement = document.getElementById('modelTable')
+        var tableObjs = tableElement.childNodes
+        // 一定要倒序，正序删不干净
+        for (var i = tableObjs.length - 1; i >= 0; i--) {
+          tableElement.removeChild(tableObjs[i])
+        }
         document.getElementById('window').style.display='none'
       },
-      checkServerModel(event){
-        var button = event.target.name
-        console.log(button)
+      checkServerModel(){
+        // var button = event.target.name
+        // console.log(button)
       },
-      deleteServerModel(event){
-        var button = event.target.name
-        var model_name = this.modelList[button]
+      deleteServerModel(){
+        // var button = event.target.name
+        // var model_name = this.modelList[button]
 
-        var parent_table = document.getElementById('modelTable')
-        var son_tr = document.getElementById(model_name)
-        parent_table.removeChild(son_tr)
+        // var parent_table = document.getElementById('modelTable')
+        // var son_tr = document.getElementById(model_name)
+        // parent_table.removeChild(son_tr)
 
-        this.$axios({
-          method: 'delete',
-          url: '/api/models',
-          params: {
-            'name': model_name
-          }
-        }).then(result => {
-          if(result.data.status === 1) {
-            console.log(result.data.status)
-          }
-        }).catch(error => {
-          console.log(error)
-        })
+        // this.$axios({
+        //   method: 'delete',
+        //   url: '/api/models',
+        //   params: {
+        //     'name': model_name
+        //   }
+        // }).then(result => {
+        //   if(result.data.status === 1) {
+        //     console.log(result.data.status)
+        //   }
+        // }).catch(error => {
+        //   console.log(error)
+        // })
       }
     },
     mounted() {
