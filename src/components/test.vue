@@ -1533,12 +1533,6 @@
       },
 
       importMODEL(event) {
-
-        /*初始化 */
-        labelIDNum = 0
-        tagName = 0
-        /*初始化 */
-
         let file = event.target.files
 
         let fileType = file[0].name.substr(file[0].name.lastIndexOf('.') + 1)
@@ -2054,33 +2048,35 @@
         }
       },
       delAllDistance() {
-        for (var i = 0, l = distanceArray.length; i < l; i++) {
-          // 删除列表显示
-          var parent_dis = document.getElementById('distance')
-          var son_li = document.getElementById(distanceArray[i].name+'li')
-          parent_dis.removeChild(son_li)
-          // 删除点
-          if (distanceArray[i].pointsArray.length > 0) {
-            for (var j = 0, l = distanceArray[i].pointsArray.length; j < l; j++) {
-              var pID = this.findModel(distancePointArray, distanceArray[i].pointsArray[j])
-              scene.remove(scene.getObjectByName(distancePointArray[pID].name))
+        if(distanceArray.length > 0){
+          for (var i = 0, l = distanceArray.length; i < l; i++) {
+            // 删除列表显示
+            var parent_dis = document.getElementById('distance')
+            var son_li = document.getElementById(distanceArray[i].name+'li')
+            parent_dis.removeChild(son_li)
+            // 删除点
+            if (distanceArray[i].pointsArray.length > 0) {
+              for (var j = 0, l = distanceArray[i].pointsArray.length; j < l; j++) {
+                var pID = this.findModel(distancePointArray, distanceArray[i].pointsArray[j])
+                scene.remove(scene.getObjectByName(distancePointArray[pID].name))
+              }
             }
+            // 删除线段
+            var lID = this.findModel(distanceLineArray, distanceArray[i].lineArray)
+            scene.remove(scene.getObjectByName(distanceLineArray[lID].name))
+            // 删除精灵文字
+            var eID = this.findModel(distanceSpriteArray, distanceArray[i].elvesArray)
+            scene.remove(scene.getObjectByName(distanceSpriteArray[eID].name))
           }
-          // 删除线段
-          var lID = this.findModel(distanceLineArray, distanceArray[i].lineArray)
-          scene.remove(scene.getObjectByName(distanceLineArray[lID].name))
-          // 删除精灵文字
-          var eID = this.findModel(distanceSpriteArray, distanceArray[i].elvesArray)
-          scene.remove(scene.getObjectByName(distanceSpriteArray[eID].name))
-        }
-        // 清空
-        distanceArray.splice(0, distanceArray.length)
-        distancePointArray.splice(0, distancePointArray.length)
-        distanceLineArray.splice(0, distanceLineArray.length)
-        distanceSpriteArray.splice(0, distanceSpriteArray.length)
+          // 清空
+          distanceArray.splice(0, distanceArray.length)
+          distancePointArray.splice(0, distancePointArray.length)
+          distanceLineArray.splice(0, distanceLineArray.length)
+          distanceSpriteArray.splice(0, distanceSpriteArray.length)
 
-        pointName = 0
-        disName = 0
+          pointName = 0
+          disName = 0
+        }
       },
       
       checkAngle(event) {
@@ -2310,6 +2306,7 @@
         document.getElementById('window').style.display='none'
       },
       checkServerModel(event){
+        this.projectInit()
         this.closeIt()
         var button = event.target.name
         var model_name = this.modelList[button]
@@ -2337,6 +2334,121 @@
         }).catch(error => {
           console.log(error)
         })
+      },
+
+      projectInit(){
+        for (var i = scene.children.length - 1; i >= 0; i--) {
+          if(scene.children[i].type === 'PerspectiveCamera') 
+            continue
+          if(scene.children[i].type === 'Mesh'){
+            scene.remove(scene.children[i])
+            continue
+          }
+          if(scene.children[i].type === 'Points'){
+            scene.remove(scene.children[i])
+            continue
+          }
+          if(scene.children[i].type === 'Sprite'){
+            scene.remove(scene.children[i])
+            continue
+          }
+          if(scene.children[i].type === 'Line'){
+            scene.remove(scene.children[i])
+            continue
+          }
+        }
+
+        var tagElement = document.getElementById('tag')
+        var tagObjs = tagElement.childNodes
+        for (var i = tagObjs.length - 1; i >= 0; i--) {
+          tagElement.removeChild(tagObjs[i])
+        }
+
+        var labelElement = document.getElementById('label')
+        var labelObjs = labelElement.childNodes
+        for (var i = labelObjs.length - 1; i >= 0; i--) {
+          labelElement.removeChild(labelObjs[i])
+        }
+
+        var distanceElement = document.getElementById('distance')
+        var distanceObjs = distanceElement.childNodes
+        for (var i = distanceObjs.length - 1; i >= 0; i--) {
+          distanceElement.removeChild(distanceObjs[i])
+        }
+
+        var angleElement = document.getElementById('angle')
+        var angleObjs = angleElement.childNodes
+        for (var i = angleObjs.length - 1; i >= 0; i--) {
+          angleElement.removeChild(angleObjs[i])
+        }
+
+        var areaElement = document.getElementById('area')
+        var areaObjs = areaElement.childNodes
+        for (var i = areaObjs.length - 1; i >= 0; i--) {
+          areaElement.removeChild(areaObjs[i])
+        }
+
+        ModelType = false
+        markObjects.splice(0,markObjects.length)
+        marksFromModel.splice(0,marksFromModel.length)
+        brushSize = 2
+        isLoadedModel = false
+        isShiftDown = false
+        mouseDown = false
+        mouseRightDown = false
+        PlaneArr.splice(0,PlaneArr.length)
+        tagObjects.splice(0,tagObjects.length)
+        tagName = 0
+        tmp_pointsArray.splice(0,tmp_pointsArray.length)
+        distancePointArray.splice(0,distancePointArray.length)
+        distanceLineArray.splice(0,distanceLineArray.length)
+        distanceSpriteArray.splice(0,distanceSpriteArray.length)
+        distanceArray.splice(0,distanceArray.length)
+        pointName = 0
+        disName = 0
+        CalDistance = false
+        a_pointsArray.splice(0,a_pointsArray.length)
+        AnglePointArray.splice(0,AnglePointArray.length)
+        AngleLineArray.splice(0,AngleLineArray.length)
+        AngleSpriteArray.splice(0,AngleSpriteArray.length)
+        AngleArray.splice(0,AngleArray.length)
+        CalAngle = false
+        aPointName = 0
+        angleName = 0
+        CalArea = false
+        areaObjects.splice(0,areaObjects.length)
+        areaObjectsArray.splice(0,areaObjectsArray.length)
+        areaSpriteArray.splice(0,areaSpriteArray.length)
+        areaObjectArray.splice(0,areaObjectArray.length)
+        areaName = 0
+        faceName = 0
+        AddLabel = false
+        AddLabelLine = false
+        labelObjects.splice(0,labelObjects.length)
+        tmp_labelObjects.splice(0,tmp_labelObjects.length)
+        labelTextBox.splice(0,labelTextBox.length)
+        labelIDNum = 0
+        tagLabelUUID.splice(0,tagLabelUUID.length)
+        tagLabelName = 0
+        tagRecordModelData.splice(0,tagRecordModelData.length)
+        labelRecordModelData.splice(0,labelRecordModelData.length)
+        this.enableMark = true
+        this.autoRotate = true
+        // this.brushColor = '#EA1A1A'
+        // this.MbrushColor = '#EA1A1A'
+        this.r_brushSize = 2
+        this.brushSizeMin = 2
+        this.brushSizeMax = 200
+        this.brushSizeStep = 2
+        this.multiple = 1
+        // this.snapshot = ''
+        // this.select2 = ''
+        this.r_section = 0
+        this.sectionSizeMin = 0
+        this.sectionSizeMax = 100
+        this.sectionSizeStep = 1
+        // this.modelPath = ''
+        // this.modelList = []
       }
     },
     mounted() {
