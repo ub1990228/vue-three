@@ -71,16 +71,11 @@
         <a href="javascript:;" data-cont="angle" @click="clicktab">角度</a>
         <a href="javascript:;" data-cont="area" @click="clicktab">面积</a>
       </nav>
-      <section id="tag">
-      </section>
-      <section class="cont" id="label">
-      </section>
-      <section class="cont" id="distance">
-      </section>
-      <section class="cont" id="angle">
-      </section>
-      <section class="cont" id="area">
-      </section>
+      <section id="tag"></section>
+      <section class="cont" id="label"></section>
+      <section class="cont" id="distance"></section>
+      <section class="cont" id="angle"></section>
+      <section class="cont" id="area"></section>
     </div>
     <div id="container" style="float:right;"></div>
   </div>
@@ -122,23 +117,23 @@
   const OrbitControls = require('three-orbit-controls')(THREE);
 
   let ModelType = false
-  let scene = ''
-  let controls = ''
-  let renderer = ''
-  let camera = ''
-  let mouse = ''
-  let directionalLight = ''
-  let ambientLight = ''
-  let pointLight = ''
-  let raycaster = ''
-  let modelMesh = ''
+  let scene
+  let controls
+  let renderer
+  let camera
+  let mouse
+  let directionalLight
+  let ambientLight
+  let pointLight
+  let raycaster
+  let modelMesh
   let markObjects = []
   let marksFromModel = []
-  let prePoint = ''
-  let circleGeo = ''
-  let circleMaterial = ''
-  let brushMesh = ''
-  let defaultMat = ''
+  let prePoint
+  let circleGeo
+  let circleMaterial
+  let brushMesh
+  let defaultMat
   let sceneBgColor = 0x333333
   let brushSize = 2
   let mouseOffset = {
@@ -149,12 +144,12 @@
   let isShiftDown = false
   let mouseDown = false
   let mouseRightDown = false
-  let font = ''
+  let font
   let PlaneArr = []
   // 选中高光效果
-  let composer = ''
-  let renderPass = ''
-  let outlinePass = ''
+  let composer
+  let renderPass
+  let outlinePass
   // 标记
   let tagObjects = []
   let tagName = 0
@@ -209,7 +204,7 @@
   let labelObjects = []
   let tmp_labelObjects = []
   let labelTextBox = []
-  let labelRenderer = ''
+  let labelRenderer
   let labelIDNum = 0
   let tagLabelUUID = []
   let tagLabelName = 0
@@ -246,7 +241,6 @@
 
       clicktab() {
         var navs = document.querySelectorAll('nav a')
-        document.querySelector('section').style.display = 'block'
         for (var i = 0; i < navs.length; i++) {
           navs[i].onclick = function () {
             var beforeNav = document.querySelector('.active')
@@ -263,7 +257,6 @@
       },
       addSection(type, content) {
         /*相关内容添加进对应的Section */
-
       },
 
       onChangeBrushColor() {
@@ -1219,7 +1212,7 @@
         this.divRender(labelTextBox)
 
         // 高光渲染
-        if(composer !== ''){
+        if(composer){
           composer.render()
         }
 
